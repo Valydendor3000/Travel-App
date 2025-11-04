@@ -1,29 +1,19 @@
-import React, { useEffect, useState } from 'react'
-
-const API_BASE = import.meta.env.VITE_API_BASE || ''
+import React, { useState } from "react";
+import BrandSocials from "./pages/BrandSocials";
+import TripsEditor from "./pages/TripsEditor";
 
 export default function App() {
-  const [status, setStatus] = useState<string>('checking…')
-  useEffect(() => {
-    if (!API_BASE) { setStatus('Set VITE_API_BASE in Pages settings'); return }
-    fetch(`${API_BASE}/health`).then(r => r.json()).then(
-      j => setStatus(j.ok ? '✅ API reachable' : '⚠️ Unexpected response'),
-      e => setStatus('❌ Cannot reach API')
-    )
-  }, [])
-
+  const [tab, setTab] = useState<"home"|"socials"|"trips">("trips");
   return (
-    <main style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <h1>TripStack Admin</h1>
-      <p>API: <code>{API_BASE || '(not set)'}</code></p>
-      <p>Status: {status}</p>
-      <section style={{marginTop: 16}}>
-        <h2>Quick Links</h2>
-        <ul>
-          <li><a href={`${API_BASE}/api/trips`} target="_blank">GET /api/trips</a></li>
-          <li><a href={`${API_BASE}/api/groups/g1/payments`} target="_blank">GET /api/groups/g1/payments</a></li>
-        </ul>
-      </section>
+    <main style={{ padding: 24, fontFamily: "sans-serif" }}>
+      <header style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        <button onClick={()=>setTab("home")}>Home</button>
+        <button onClick={()=>setTab("socials")}>Brand Socials</button>
+        <button onClick={()=>setTab("trips")}>Trips</button>
+      </header>
+      {tab === "home" && <p>Welcome to TripStack Admin.</p>}
+      {tab === "socials" && <BrandSocials/>}
+      {tab === "trips" && <TripsEditor/>}
     </main>
-  )
+  );
 }
