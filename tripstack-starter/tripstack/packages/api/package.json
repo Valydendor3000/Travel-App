@@ -1,0 +1,7 @@
+{
+  "name": "@tripstack/api",
+  "private": true,
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {}
+}
