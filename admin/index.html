@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TripStack Admin Lite</title>
+<style>
+  :root { --p:#0ea5e9; --b:#0f172a; --muted:#64748b; --bd:#e2e8f0; }
+  body { font-family: system-ui, sans-serif; background:#f8fafc; color:var(--b); margin:0; }
+  header { background:var(--p); color:#fff; padding:16px; }
+  main { padding:16px; display:grid; gap:16px; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); }
+  .card { background:#fff; border:1px solid var(--bd); border-radius:14px; padding:16px; }
+  h2 { margin:0 0 8px; font-size:18px; }
+  label { display:block; font-size:12px; color:var(--muted); margin-top:10px; }
+  input, select, textarea {
+    width:100%; padding:10px; border:1px solid var(--bd); border-radius:10px; font-size:14px; background:#fff;
+  }
+  button { margin-top:12px; background:var(--p); color:#fff; border:none; padding:10px 14px; font-weight:700; border-radius:10px; cursor:pointer; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .muted { color:var(--muted); font-size:12px; }
+  .ok { color:#047857; font-weight:700; }
+  .err { color:#b91c1c; font-weight:700; }
+  .tag { display:inline-block; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+  pre { background:#0b1020; color:#d1e7ff; padding:8px; border-radius:8px; overflow:auto; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 style="margin:0;font-size:20px">TripStack Admin Lite</h1>
+  <div class="muted">Admin-only actions for your Cloudflare Worker API</div>
+</header>
+<main>
+  <!-- SETTINGS -->
+  <section class="card">
+    <h2>Settings</h2>
+    <label>Worker Base URL</label>
+    <input id="baseUrl" placeholder="https://travel-app.thebusinessshapeup.workers.dev" />
+    <label>Admin Token (Bearer)</label>
+    <input id="token" type="password" placeholder="sk_admin_xxx" />
+    <button id="save">Save Settings</button>
+    <div id="status" class="muted"></div>
+  </section>
+
+  <!-- QUICK HEALTH + LOOKUPS -->
+  <section class="card">
+    <h2>Quick Checks</h2>
+    <button id="healthBtn">Ping /health</button>
+    <div id="healthOut" class="muted"></div>
+    <label class="row">
+      <span>Group ID</span><span>Trip ID</span>
+    </label>
+    <div class="row">
+      <input id="groupIdLookup" placeholder="g1" />
+      <input id="tripIdLookup" placeholder="(after create)" />
+    </div>
+    <div class="row">
+      <button id="listTrips">List Trips (group)</button>
+      <button id="getTripFull">Get Trip Full</button>
+    </div>
+    <pre id="lookupOut"></pre>
+  </section>
+
+  <!-- GROUPS -->
+  <section class="card">
+    <h2>Groups</h2>
+    <label>Name</label><input id="gName" placeholder="Caribbean Cruise Group" />
+    <div class="row">
+      <div><label>Capacity</label><input id="gCapacity" placeholder="50" /></div>
+      <div><label>Brand ID</label><input id="gBrandId" placeholder="b1" /></div>
+    </div>
+    <button id="createGroup">Create Group</button>
+    <label>Group ID</label><input id="gId" placeholder="(returned id)" />
+    <label>Leader User ID</label><input id="gLeader" placeholder="user_123" />
+    <div class="row">
+      <button id="setLeader">Set Leader</button>
+      <button id="groupPublic">Make Group Public</button>
+    </div>
+    <div class="row">
+      <button id="groupPrivate">Make Group Private</button>
+      <span></span>
+    </div>
+    <div id="gOut" class="muted"></div>
+  </section>
+
+  <!-- TRIPS -->
+  <section class="card">
+    <h2>Trips</h2>
+    <div class="row">
+      <div><label>Group ID</label><input id="tGroupId" placeholder="g1"></div>
+      <div><label>Title</label><input id="tTitle" placeholder="Caribbean Cruise Adventure"></div>
+    </div>
+    <div class="row">
+      <div><label>Start (epoch sec)</label><input id="tStart" placeholder="1735689600"></div>
+      <div><label>End (epoch sec)</label><input id="tEnd" placeholder="1736208000"></div>
+    </div>
+    <label>Notes</label><input id="tNotes" placeholder="7-night Eastern Caribbean cruise." />
+    <div class="row">
+      <div><label>Flags</label>
+        <div><span class="tag">Cruise</span> <input type="checkbox" id="fCruise" /></div>
+        <div><span class="tag">Flights</span> <input type="checkbox" id="fFlights" /></div>
+        <div><span class="tag">Hotel</span> <input type="checkbox" id="fHotel" /></div>
+        <div><span class="tag">All-inclusive</span> <input type="checkbox" id="fAI" /></div>
+      </div>
+      <div>
+        <label>Visibility</label>
+        <select id="tVis"><option value="0">Private</option><option value="1">Public</option></select>
+      </div>
+    </div>
+    <button id="createTrip">Create Trip</button>
+    <label>Trip ID</label><input id="tId" placeholder="(returned id)" />
+    <div class="row">
+      <button id="tripPublic">Make Trip Public</button>
+      <button id="tripPrivate">Make Trip Private</button>
+    </div>
+    <div class="row">
+      <button id="flagsUpdate">Update Flags</button><span></span>
+    </div>
+    <div id="tOut" class="muted"></div>
+  </section>
+
+  <!-- DETAIL SLOTS -->
+  <section class="card">
+    <h2>Cruise Cabin</h2>
+    <label>Trip ID</label><input id="cTrip" placeholder="TRIP_ID" />
+    <div class="row">
+      <div><label>Cabin #</label><input id="cNo" placeholder="10234" /></div>
+      <div><label>Category</label><input id="cCat" placeholder="Balcony" /></div>
+    </div>
+    <div class="row">
+      <div><label>Deck</label><input id="cDeck" placeholder="10" /></div>
+      <div><label>Guests</label><input id="cGuests" placeholder="2" /></div>
+    </div>
+    <label>Price (cents)</label><input id="cPrice" placeholder="189900" />
+    <label>Notes</label><input id="cNotes" placeholder="Midship cabin." />
+    <button id="addCabin">Add Cabin</button>
+    <div id="cOut" class="muted"></div>
+  </section>
+
+  <section class="card">
+    <h2>Flight Segment</h2>
+    <label>Trip ID</label><input id="fTrip" placeholder="TRIP_ID" />
+    <div class="row">
+      <div><label>Carrier</label><input id="fCarrier" placeholder="AA" /></div>
+      <div><label>Flight #</label><input id="fNo" placeholder="1234" /></div>
+    </div>
+    <div class="row">
+      <div><label>From</label><input id="fFrom" placeholder="MCO" /></div>
+      <div><label>To</label><input id="fTo" placeholder="MIA" /></div>
+    </div>
+    <div class="row">
+      <div><label>Depart (epoch)</label><input id="fDep" placeholder="1735671600" /></div>
+      <div><label>Arrive (epoch)</label><input id="fArr" placeholder="1735678800" /></div>
+    </div>
+    <label>Record Locator</label><input id="fPNR" placeholder="ABC123" />
+    <button id="addFlight">Add Segment</button>
+    <div id="fOut" class="muted"></div>
+  </section>
+
+  <section class="card">
+    <h2>Hotel Room</h2>
+    <label>Trip ID</label><input id="hTrip" placeholder="TRIP_ID" />
+    <label>Hotel Name</label><input id="hName" placeholder="Marriott San Juan Resort" />
+    <div class="row">
+      <div><label>Room Type</label><input id="hRoom" placeholder="Ocean View King" /></div>
+      <div><label>Occupants</label><input id="hOcc" placeholder="2" /></div>
+    </div>
+    <div class="row">
+      <div><label>Check-in (epoch)</label><input id="hIn" placeholder="1735603200" /></div>
+      <div><label>Check-out (epoch)</label><input id="hOutTs" placeholder="1735689600" /></div>
+    </div>
+    <label>Confirmation</label><input id="hConf" placeholder="CONF1234" />
+    <button id="addHotel">Add Room</button>
+    <div id="hOut" class="muted"></div>
+  </section>
+
+  <section class="card">
+    <h2>All-inclusive</h2>
+    <label>Trip ID</label><input id="aTrip" placeholder="TRIP_ID" />
+    <label>Resort</label><input id="aResort" placeholder="Beaches Turks & Caicos" />
+    <div class="row">
+      <div><label>Plan</label><input id="aPlan" placeholder="Luxury Included" /></div>
+      <div><label>Occupants</label><input id="aOcc" placeholder="2" /></div>
+    </div>
+    <div class="row">
+      <div><label>Check-in (epoch)</label><input id="aIn" placeholder="1736208000" /></div>
+      <div><label>Check-out (epoch)</label><input id="aOut" placeholder="1736467200" /></div>
+    </div>
+    <label>Confirmation</label><input id="aConf" placeholder="AI5678" />
+    <button id="addAI">Add Package</button>
+    <div id="aOut" class="muted"></div>
+  </section>
+
+  <!-- PAYMENTS -->
+  <section class="card">
+    <h2>Payment Link</h2>
+    <div class="row">
+      <div><label>Group ID</label><input id="pGroup" placeholder="g1" /></div>
+      <div><label>Label</label><input id="pLabel" placeholder="Deposit" /></div>
+    </div>
+    <label>Vendor URL</label><input id="pUrl" placeholder="https://stripe.com/pay/..." />
+    <label>Due (epoch, optional)</label><input id="pDue" placeholder="" />
+    <button id="addPay">Add Payment</button>
+    <div id="pOut" class="muted"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = {
+  baseUrl: localStorage.getItem("ts_base") || "https://travel-app.thebusinessshapeup.workers.dev",
+  token: localStorage.getItem("ts_token") || ""
+};
+$("baseUrl").value = state.baseUrl;
+$("token").value = state.token;
+
+$("save").onclick = () => {
+  state.baseUrl = $("baseUrl").value.trim();
+  state.token = $("token").value.trim();
+  localStorage.setItem("ts_base", state.baseUrl);
+  localStorage.setItem("ts_token", state.token);
+  $("status").textContent = "Saved.";
+};
+
+async function call(method, path, body) {
+  const url = state.baseUrl.replace(/\/$/, "") + path;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      "Authorization": "Bearer " + state.token,
+      "Content-Type": "application/json"
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  let json;
+  try { json = await res.json(); } catch { json = await res.text(); }
+  return { status: res.status, data: json };
+}
+
+// Health + lookups
+$("healthBtn").onclick = async () => {
+  const r = await fetch(state.baseUrl.replace(/\/$/, "") + "/health");
+  const j = await r.json().catch(()=>null);
+  $("healthOut").innerHTML = j && j.ok ? "<span class='ok'>API reachable</span>" : "<span class='err'>Health failed</span>";
+};
+
+$("listTrips").onclick = async () => {
+  const gid = $("groupIdLookup").value.trim();
+  const r = await fetch(state.baseUrl.replace(/\/$/, "") + "/api/trips?groupId=" + encodeURIComponent(gid));
+  const j = await r.json();
+  $("lookupOut").textContent = JSON.stringify(j, null, 2);
+};
+
+$("getTripFull").onclick = async () => {
+  const tid = $("tripIdLookup").value.trim();
+  const r = await fetch(state.baseUrl.replace(/\/$/, "") + "/api/trips/" + encodeURIComponent(tid) + "/full");
+  const j = await r.json();
+  $("lookupOut").textContent = JSON.stringify(j, null, 2);
+};
+
+// Groups
+$("createGroup").onclick = async () => {
+  const body = { name: $("gName").value.trim(), capacity: +$("gCapacity").value || null, brand_id: $("gBrandId").value.trim() || null };
+  const r = await call("POST","/api/groups", body);
+  $("gOut").innerHTML = r.status===200 ? "<span class='ok'>Created: "+(r.data.id||"")+"</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+  if (r.data && r.data.id) $("gId").value = r.data.id;
+};
+
+$("setLeader").onclick = async () => {
+  const gid = $("gId").value.trim();
+  const body = { leader_user_id: $("gLeader").value.trim() || null };
+  const r = await call("PUT","/api/groups/"+encodeURIComponent(gid)+"/leader", body);
+  $("gOut").innerHTML = r.status===200 ? "<span class='ok'>Leader updated</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+
+$("groupPublic").onclick = async () => {
+  const gid = $("gId").value.trim();
+  const r = await call("PUT","/api/groups/"+encodeURIComponent(gid)+"/visibility", { is_public: 1 });
+  $("gOut").innerHTML = r.status===200 ? "<span class='ok'>Group public</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+$("groupPrivate").onclick = async () => {
+  const gid = $("gId").value.trim();
+  const r = await call("PUT","/api/groups/"+encodeURIComponent(gid)+"/visibility", { is_public: 0 });
+  $("gOut").innerHTML = r.status===200 ? "<span class='ok'>Group private</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+
+// Trips
+$("createTrip").onclick = async () => {
+  const body = {
+    group_id: $("tGroupId").value.trim(),
+    title: $("tTitle").value.trim(),
+    start_date: +$("tStart").value || null,
+    end_date: +$("tEnd").value || null,
+    notes: $("tNotes").value.trim() || null,
+    is_public: +$("tVis").value === 1,
+    has_cruise: $("fCruise").checked ? 1 : 0,
+    has_flights: $("fFlights").checked ? 1 : 0,
+    has_hotel: $("fHotel").checked ? 1 : 0,
+    has_all_inclusive: $("fAI").checked ? 1 : 0
+  };
+  const r = await call("POST","/api/trips", body);
+  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Created: "+(r.data.id||"")+"</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+  if (r.data && r.data.id) $("tId").value = r.data.id;
+};
+
+$("tripPublic").onclick = async () => {
+  const tid = $("tId").value.trim();
+  const r = await call("PUT","/api/trips/"+encodeURIComponent(tid)+"/visibility", { is_public: 1 });
+  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Trip public</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+$("tripPrivate").onclick = async () => {
+  const tid = $("tId").value.trim();
+  const r = await call("PUT","/api/trips/"+encodeURIComponent(tid)+"/visibility", { is_public: 0 });
+  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Trip private</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+
+$("flagsUpdate").onclick = async () => {
+  const tid = $("tId").value.trim();
+  const body = {
+    has_cruise: $("fCruise").checked ? 1 : 0,
+    has_flights: $("fFlights").checked ? 1 : 0,
+    has_hotel: $("fHotel").checked ? 1 : 0,
+    has_all_inclusive: $("fAI").checked ? 1 : 0
+  };
+  const r = await call("PUT","/api/trips/"+encodeURIComponent(tid)+"/flags", body);
+  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Flags updated</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+
+// Cruise
+$("addCabin").onclick = async () => {
+  const tid = $("cTrip").value.trim();
+  const body = {
+    cabin_no: $("cNo").value.trim() || null,
+    category: $("cCat").value.trim() || null,
+    deck: $("cDeck").value.trim() || null,
+    guests: +$("cGuests").value || null,
+    price_cents: +$("cPrice").value || null,
+    notes: $("cNotes").value.trim() || null
+  };
+  const r = await call("POST","/api/trips/"+encodeURIComponent(tid)+"/cruise-cabins", body);
+  $("cOut").innerHTML = r.status===200 ? "<span class='ok'>Cabin added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+
+// Flights
+$("addFlight").onclick = async () => {
+  const tid = $("fTrip").value.trim();
+  const body = {
+    carrier: $("fCarrier").value.trim() || null,
+    flight_no: $("fNo").value.trim() || null,
+    depart_airport: $("fFrom").value.trim() || null,
+    arrive_airport: $("fTo").value.trim() || null,
+    depart_ts: +$("fDep").value || null,
+    arrive_ts: +$("fArr").value || null,
+    record_locator: $("fPNR").value.trim() || null
+  };
+  const r = await call("POST","/api/trips/"+encodeURIComponent(tid)+"/flights", body);
+  $("fOut").innerHTML = r.status===200 ? "<span class='ok'>Segment added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+
+// Hotel
+$("addHotel").onclick = async () => {
+  const tid = $("hTrip").value.trim();
+  const body = {
+    hotel_name: $("hName").value.trim() || null,
+    room_type: $("hRoom").value.trim() || null,
+    check_in_ts: +$("hIn").value || null,
+    check_out_ts: +$("hOutTs").value || null,
+    occupants: +$("hOcc").value || null,
+    confirmation: $("hConf").value.trim() || null
+  };
+  const r = await call("POST","/api/trips/"+encodeURIComponent(tid)+"/hotel-rooms", body);
+  $("hOut").innerHTML = r.status===200 ? "<span class='ok'>Room added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+
+// All-inclusive
+$("addAI").onclick = async () => {
+  const tid = $("aTrip").value.trim();
+  const body = {
+    resort_name: $("aResort").value.trim() || null,
+    plan_name: $("aPlan").value.trim() || null,
+    check_in_ts: +$("aIn").value || null,
+    check_out_ts: +$("aOut").value || null,
+    occupants: +$("aOcc").value || null,
+    confirmation: $("aConf").value.trim() || null
+  };
+  const r = await call("POST","/api/trips/"+encodeURIComponent(tid)+"/all-inclusive", body);
+  $("aOut").innerHTML = r.status===200 ? "<span class='ok'>Package added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
+};
+</script>
+</body>
+</html>
