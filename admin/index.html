@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<label>Admin Token <input id="admintoken" placeholder="paste ADMIN_TOKEN" /></label>
+  
 <title>TripStack Admin</title>
 <style>
   :root { --p:#0ea5e9; --pd:#0284c7; --b:#0f172a; --m:#64748b; --bd:#e2e8f0; --bg:#f8fafc; }
@@ -183,6 +185,24 @@
       <span id="brandMsg" class="muted"></span>
     </section>
   </main>
+<script>
+  function api(path, opts={}) {
+    const token = (document.getElementById("admintoken")?.value || "").trim();
+    const headers = Object.assign(
+      { "Content-Type": "application/json" },
+      opts.headers || {},
+      token ? { "Authorization": "Bearer " + token } : {}
+    );
+    return fetch("https://travel-app.thebusinessshapeup.workers.dev" + path, {
+      ...opts,
+      headers
+    }).then(async r => {
+      const body = (r.headers.get("content-type")||"").includes("application/json") ? await r.json() : await r.text();
+      if (!r.ok) throw new Error(typeof body === "string" ? body : (body.error || "Request failed"));
+      return body;
+    });
+  }
+</script>
 
   <script>
     // ---------- Small helper: localStorage-backed settings ----------
