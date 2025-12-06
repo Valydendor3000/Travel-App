@@ -2,15 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<label>Admin Token <input id="admintoken" placeholder="paste ADMIN_TOKEN" /></label>
-  
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>TripStack Admin</title>
 <style>
   :root { --p:#0ea5e9; --pd:#0284c7; --b:#0f172a; --m:#64748b; --bd:#e2e8f0; --bg:#f8fafc; }
   * { box-sizing: border-box; }
   body { margin:0; font-family: ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--b); }
-  header { background:var(--p); color:#fff; padding:16px; }
+  header { background:var(--p); color:#fff; padding:16px; display:flex; align-items:center; justify-content:space-between; }
   h1 { margin:0; font-size:20px; }
   main { padding:16px; display:grid; gap:16px; grid-template-columns: repeat(auto-fit,minmax(340px,1fr)); }
   .card { background:#fff; border:1px solid var(--bd); border-radius:14px; padding:16px; }
@@ -19,53 +17,54 @@
   input, select, textarea {
     width:100%; padding:10px; border:1px solid var(--bd); border-radius:10px; font-size:14px; background:#fff;
   }
+  input[type="checkbox"] { width:auto; margin-right:6px; vertical-align:middle; }
   textarea { min-height:90px; }
   button { margin-top:12px; background:var(--p); color:#fff; border:none; padding:10px 14px; font-weight:700; border-radius:10px; cursor:pointer; }
   button:active { background:var(--pd); }
   .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .muted { color:var(--m); font-size:12px; }
+  .muted { color:var(--m); font-size:12px; margin-left:8px; }
   .ok { color:#047857; font-weight:700; }
   .err { color:#b91c1c; font-weight:700; }
-  .tag { display:inline-block; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; }
-  .list { margin-top:8px; display:grid; gap:8px; max-height:280px; overflow:auto; }
+  .list { margin-top:8px; display:grid; gap:8px; max-height:360px; overflow:auto; }
   .item { border:1px solid var(--bd); border-radius:12px; padding:10px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:8px; }
   .item h3 { margin:0; font-size:14px; }
-  .pill { font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; display:inline-block; }
   .danger { background:#ef4444; }
   .danger:active { background:#dc2626; }
+  .tabs { display:flex; gap:8px; padding:0 16px 8px 16px }
+  .tabs button { background:#e2f2ff; color:#075985; }
+  .tabs button.active { background:#0ea5e9; color:#fff; }
 </style>
 </head>
 <body>
   <header>
     <h1>TripStack Admin</h1>
+    <nav class="tabs">
+      <button class="tabBtn active" data-tab="trips">Trips</button>
+      <button class="tabBtn" data-tab="payments">Payments</button>
+      <button class="tabBtn" data-tab="socials">Socials</button>
+    </nav>
   </header>
 
-  <!-- Settings bar -->
+  <!-- Settings -->
   <section class="card" style="margin:16px">
     <h2>Settings</h2>
     <div class="row">
       <div>
         <label>API base URL</label>
-        <input id="cfgApi" placeholder="https://your-worker.youracc.workers.dev" />
+        <input id="cfgApi" placeholder="https://<your-worker>.<account>.workers.dev" />
       </div>
       <div>
         <label>Admin Token</label>
-        <input id="cfgToken" placeholder="paste your ADMIN_TOKEN" />
+        <input id="cfgToken" placeholder="paste your ADMIN_TOKEN secret" />
       </div>
     </div>
     <button id="saveCfgBtn">Save</button>
     <span id="cfgMsg" class="muted"></span>
   </section>
 
-  <!-- Tabs -->
-  <div style="display:flex; gap:8px; padding:0 16px 8px 16px">
-    <button class="tabBtn" data-tab="trips">Trips</button>
-    <button class="tabBtn" data-tab="payments">Payments</button>
-    <button class="tabBtn" data-tab="socials">Socials</button>
-  </div>
-
+  <!-- Trips tab -->
   <main id="tab-trips" style="display:block">
-    <!-- Trips -->
     <section class="card">
       <h2>Create Trip</h2>
       <div class="row">
@@ -91,7 +90,6 @@
       <label>Notes</label>
       <textarea id="tripNotes" placeholder="Extra info for your travelers…"></textarea>
 
-      <!-- Optional flags; safe if your DB has these columns (has_cruise/has_flights/has_hotel/has_all_inclusive/is_public) -->
       <div class="row">
         <label><input type="checkbox" id="tripCruise" /> Cruise</label>
         <label><input type="checkbox" id="tripFlights" /> Flights</label>
@@ -121,8 +119,8 @@
     </section>
   </main>
 
+  <!-- Payments tab -->
   <main id="tab-payments" style="display:none">
-    <!-- Payments -->
     <section class="card">
       <h2>Add Payment Link</h2>
       <div class="row">
@@ -158,8 +156,8 @@
     </section>
   </main>
 
+  <!-- Socials tab -->
   <main id="tab-socials" style="display:none">
-    <!-- Socials -->
     <section class="card">
       <h2>Brand Socials</h2>
       <div class="row">
@@ -185,274 +183,223 @@
       <span id="brandMsg" class="muted"></span>
     </section>
   </main>
+
 <script>
-  function api(path, opts={}) {
-    const token = (document.getElementById("admintoken")?.value || "").trim();
+  const $ = (id) => document.getElementById(id);
+
+  // Settings (persist to localStorage)
+  const cfg = {
+    get api()   { return $("cfgApi").value.trim(); },
+    get token() { return $("cfgToken").value.trim(); },
+    save() {
+      localStorage.setItem("admin.api", this.api);
+      localStorage.setItem("admin.token", this.token);
+      $("cfgMsg").textContent = "✅ Saved";
+      setTimeout(()=>$("cfgMsg").textContent="", 1500);
+    },
+    load() {
+      $("cfgApi").value   = localStorage.getItem("admin.api")   || "";
+      $("cfgToken").value = localStorage.getItem("admin.token") || "";
+    }
+  };
+  cfg.load();
+  $("saveCfgBtn").onclick = cfg.save;
+
+  // Fetch wrapper adds Authorization header automatically
+  async function apiFetch(path, opts={}) {
+    const base = cfg.api.replace(/\/+$/,"");
     const headers = Object.assign(
       { "Content-Type": "application/json" },
       opts.headers || {},
-      token ? { "Authorization": "Bearer " + token } : {}
+      cfg.token ? { "Authorization": "Bearer " + cfg.token } : {}
     );
-    return fetch("https://travel-app.thebusinessshapeup.workers.dev" + path, {
-      ...opts,
-      headers
-    }).then(async r => {
-      const body = (r.headers.get("content-type")||"").includes("application/json") ? await r.json() : await r.text();
-      if (!r.ok) throw new Error(typeof body === "string" ? body : (body.error || "Request failed"));
-      return body;
-    });
+    const res = await fetch(base + path, { ...opts, headers });
+    const ct = res.headers.get("content-type") || "";
+    const body = ct.includes("application/json") ? await res.json() : await res.text();
+    if (!res.ok) throw new Error(typeof body === "string" ? body : (body.error || "Request failed"));
+    return body;
   }
-</script>
 
-  <script>
-    // ---------- Small helper: localStorage-backed settings ----------
-    const $ = (id) => document.getElementById(id);
-    const cfg = {
-      get api()   { return $("cfgApi").value.trim(); },
-      get token() { return $("cfgToken").value.trim(); },
-      save() {
-        localStorage.setItem("admin.api", this.api);
-        localStorage.setItem("admin.token", this.token);
-        $("cfgMsg").textContent = "✅ Saved";
-        setTimeout(()=>$("cfgMsg").textContent="", 1500);
-      },
-      load() {
-        $("cfgApi").value   = localStorage.getItem("admin.api")   || "";
-        $("cfgToken").value = localStorage.getItem("admin.token") || "";
-      }
-    };
-
-    // ---------- fetch wrapper (adds headers automatically) ----------
-    async function apiFetch(path, opts={}) {
-      const base = cfg.api.replace(/\/+$/,"");
-      const headers = Object.assign(
-        { "Content-Type": "application/json" },
-        opts.headers || {},
-        cfg.token ? { "Authorization": "Bearer " + cfg.token } : {}
-      );
-      const res = await fetch(base + path, Object.assign({}, opts, { headers }));
-      const ct = res.headers.get("content-type") || "";
-      const body = ct.includes("application/json") ? await res.json() : await res.text();
-      if (!res.ok) throw new Error(typeof body === "string" ? body : (body.error || "Request failed"));
-      return body;
-    }
-
-    // ---------- Tabs ----------
-    document.querySelectorAll(".tabBtn").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const id = btn.dataset.tab;
-        document.querySelectorAll("main[id^='tab-']").forEach(m=>m.style.display="none");
-        $("tab-"+id).style.display="block";
-      });
+  // Tabs
+  document.querySelectorAll(".tabBtn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tabBtn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const id = btn.dataset.tab;
+      document.querySelectorAll("main[id^='tab-']").forEach(m=>m.style.display="none");
+      $("tab-"+id).style.display="block";
     });
+  });
 
-    // ---------- Settings init ----------
-    cfg.load();
-    $("saveCfgBtn").onclick = cfg.save;
-
-    // ---------- Trips ----------
-    $("createTripBtn").onclick = async () => {
-      $("tripStatus").textContent = "";
-      try {
-        const group_id = $("tripGroupId").value.trim() || "g1";
-        const title = $("tripTitle").value.trim();
-        const start = $("tripStart").value ? Math.floor(new Date($("tripStart").value).getTime()/1000) : null;
-        const end   = $("tripEnd").value   ? Math.floor(new Date($("tripEnd").value).getTime()/1000)   : null;
-        const body = {
-          group_id,
-          title,
-          start_date: start,
-          end_date: end,
-          notes: $("tripNotes").value.trim() || null
-        };
-        // Optional flags only if your DB supports these columns:
-        const flags = {
-          has_cruise: $("tripCruise").checked,
-          has_flights: $("tripFlights").checked,
-          has_hotel: $("tripHotel").checked,
-          has_all_inclusive: $("tripAI").checked,
-          is_public: $("tripPublic").checked
-        };
-        // Try to send flags; if your worker ignores them, no harm done.
-        Object.assign(body, flags);
-
-        const j = await apiFetch("/api/trips", { method:"POST", body: JSON.stringify(body) });
-        $("tripStatus").textContent = "✅ Trip created";
-        await loadTrips();
-      } catch (e) {
-        $("tripStatus").textContent = "❌ " + e.message;
-      }
-    };
-
-    $("refreshTripsBtn").onclick = loadTrips;
-    async function loadTrips() {
-      const gid = $("tripListGroupId").value.trim() || "g1";
-      try {
-        const trips = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
-        $("tripList").innerHTML = trips.map(t => {
-          const start = t.start_date ? new Date(t.start_date*1000).toLocaleDateString() : "TBD";
-          const end   = t.end_date   ? new Date(t.end_date*1000).toLocaleDateString()   : "TBD";
-          const vis   = ("is_public" in t) ? (t.is_public ? "Public" : "Private") : null;
-          return `
-            <div class="item">
-              <div>
-                <h3>${esc(t.title || "Untitled Trip")}</h3>
-                <div class="muted">${esc(start)} — ${esc(end)} ${vis ? ` · <span class="pill">${esc(vis)}</span>` : ""}</div>
-              </div>
-              <div style="display:flex; gap:6px">
-                ${vis!==null ? `<button data-action="toggle" data-id="${t.id}">${t.is_public ? "Make Private" : "Make Public"}</button>` : ""}
-                <button class="danger" data-action="delete" data-id="${t.id}">Delete</button>
-              </div>
-            </div>
-          `;
-        }).join("");
-        // Action handlers
-        $("tripList").querySelectorAll("button").forEach(b=>{
-          const id = b.getAttribute("data-id");
-          const act = b.getAttribute("data-action");
-          if (act==="delete") b.onclick = ()=>deleteTrip(id);
-          if (act==="toggle") b.onclick = ()=>toggleVisibility(id);
-        });
-      } catch (e) {
-        $("tripList").innerHTML = `<div class="item"><div class="err">Failed to load trips: ${esc(e.message)}</div></div>`;
-      }
+  // Trips
+  $("createTripBtn").onclick = async () => {
+    $("tripStatus").textContent = "";
+    try {
+      const group_id = $("tripGroupId").value.trim() || "g1";
+      const title = $("tripTitle").value.trim();
+      const start = $("tripStart").value ? Math.floor(new Date($("tripStart").value).getTime()/1000) : null;
+      const end   = $("tripEnd").value   ? Math.floor(new Date($("tripEnd").value).getTime()/1000)   : null;
+      const body = {
+        group_id, title, start_date: start, end_date: end,
+        notes: $("tripNotes").value.trim() || null,
+        has_cruise: $("tripCruise").checked,
+        has_flights: $("tripFlights").checked,
+        has_hotel: $("tripHotel").checked,
+        has_all_inclusive: $("tripAI").checked,
+        is_public: $("tripPublic").checked
+      };
+      await apiFetch("/api/trips", { method:"POST", body: JSON.stringify(body) });
+      $("tripStatus").textContent = "✅ Trip created";
+      await loadTrips();
+    } catch (e) {
+      $("tripStatus").textContent = "❌ " + e.message;
     }
+  };
 
-    async function deleteTrip(id) {
-      if (!confirm("Delete this trip?")) return;
-      try {
-        await apiFetch(`/api/trips/${encodeURIComponent(id)}`, { method:"DELETE" });
-        await loadTrips();
-      } catch (e) {
-        alert("Delete failed: " + e.message);
-      }
-    }
-
-    async function toggleVisibility(id) {
-      try {
-        // Fetch current one
-        const t = await apiFetch(`/api/trips/${encodeURIComponent(id)}`);
-        const next = !(!!t.is_public);
-        await apiFetch(`/api/trips/${encodeURIComponent(id)}`, {
-          method:"PUT",
-          body: JSON.stringify({ is_public: next })
-        });
-        await loadTrips();
-      } catch (e) {
-        alert("Toggle failed (ensure your DB has an is_public column): " + e.message);
-      }
-    }
-
-    // ---------- Payments ----------
-    $("createPayBtn").onclick = async () => {
-      $("payStatus").textContent = "";
-      try {
-        const groupId = $("payGroupId").value.trim() || "g1";
-        const body = {
-          label: $("payLabel").value.trim(),
-          vendor_url: $("payVendor").value.trim(),
-          due_at: $("payDue").value ? Math.floor(new Date($("payDue").value).getTime()/1000) : null
-        };
-        const j = await apiFetch(`/api/groups/${encodeURIComponent(groupId)}/payments`, {
-          method:"POST", body: JSON.stringify(body)
-        });
-        $("payStatus").textContent = "✅ Payment link added";
-        await loadPayments();
-      } catch (e) {
-        $("payStatus").textContent = "❌ " + e.message;
-      }
-    };
-
-    $("refreshPaysBtn").onclick = loadPayments;
-    async function loadPayments() {
-      const gid = $("payListGroupId").value.trim() || "g1";
-      try {
-        const items = await apiFetch(`/api/groups/${encodeURIComponent(gid)}/payments`);
-        $("payList").innerHTML = items.map(p => `
+  $("refreshTripsBtn").onclick = loadTrips;
+  async function loadTrips() {
+    const gid = $("tripListGroupId").value.trim() || "g1";
+    try {
+      const trips = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
+      $("tripList").innerHTML = trips.map(t => {
+        const s = t.start_date ? new Date(t.start_date*1000).toLocaleDateString() : "TBD";
+        const e = t.end_date   ? new Date(t.end_date*1000).toLocaleDateString()   : "TBD";
+        const vis = ("is_public" in t) ? (t.is_public ? "Public" : "Private") : null;
+        return `
           <div class="item">
             <div>
-              <h3>${esc(p.label)}</h3>
-              ${p.due_at ? `<div class="muted">Due: ${new Date(p.due_at*1000).toLocaleDateString()}</div>` : ""}
+              <h3>${esc(t.title || "Untitled Trip")}</h3>
+              <div class="muted">${esc(s)} — ${esc(e)} ${vis ? ` · <span class="pill">${esc(vis)}</span>` : ""}</div>
             </div>
             <div style="display:flex; gap:6px">
-              <a class="pill" href="${esc(p.vendor_url)}" target="_blank">Open</a>
-              <button class="danger" data-id="${p.id}">Delete</button>
+              ${vis!==null ? `<button data-action="toggle" data-id="${t.id}">${t.is_public ? "Make Private" : "Make Public"}</button>` : ""}
+              <button class="danger" data-action="delete" data-id="${t.id}">Delete</button>
             </div>
           </div>
-        `).join("");
-        $("payList").querySelectorAll("button.danger").forEach(b=>{
-          const id = b.getAttribute("data-id");
-          b.onclick = ()=>deletePayment(id, gid);
-        });
-      } catch (e) {
-        $("payList").innerHTML = `<div class="item"><div class="err">Failed to load payments: ${esc(e.message)}</div></div>`;
-      }
+        `;
+      }).join("");
+      $("tripList").querySelectorAll("button").forEach(b=>{
+        const id = b.getAttribute("data-id");
+        const act = b.getAttribute("data-action");
+        if (act==="delete") b.onclick = ()=>deleteTrip(id);
+        if (act==="toggle") b.onclick = ()=>toggleVisibility(id);
+      });
+    } catch (e) {
+      $("tripList").innerHTML = `<div class="item"><div class="err">Failed to load trips: ${esc(e.message)}</div></div>`;
     }
-
-    async function deletePayment(paymentId, groupId) {
-      // If you add a DELETE endpoint later, wire it here.
-      alert("Delete not implemented in API yet. Remove duplicates by avoiding re-adding the same label, or add a DELETE route for payment_links.");
-      // Example (if your worker adds it):
-      // await apiFetch(`/api/groups/${encodeURIComponent(groupId)}/payments/${encodeURIComponent(paymentId)}`, { method:"DELETE" });
-      // await loadPayments();
+  }
+  async function deleteTrip(id) {
+    if (!confirm("Delete this trip?")) return;
+    try {
+      await apiFetch(`/api/trips/${encodeURIComponent(id)}`, { method:"DELETE" });
+      await loadTrips();
+    } catch (e) {
+      alert("Delete failed: " + e.message);
     }
-
-    // ---------- Socials ----------
-    $("loadBrandBtn").onclick = loadBrand;
-    $("saveBrandBtn").onclick = saveBrand;
-
-    async function loadBrand() {
-      $("brandMsg").textContent = "";
-      const id = $("brandId").value.trim() || "b1";
-      try {
-        const data = await apiFetch(`/api/brands/${encodeURIComponent(id)}/socials`, { method:"GET" });
-        $("fbUrl").value = data.facebook_url || "";
-        $("igUrl").value = data.instagram_url || "";
-        $("twUrl").value = data.twitter_url || "";
-        $("ttUrl").value = data.tiktok_url || "";
-        $("brandMsg").textContent = "✅ Loaded";
-      } catch (e) {
-        $("brandMsg").textContent = "❌ " + e.message;
-      }
+  }
+  async function toggleVisibility(id) {
+    try {
+      const t = await apiFetch(`/api/trips/${encodeURIComponent(id)}`);
+      const next = !(!!t.is_public);
+      await apiFetch(`/api/trips/${encodeURIComponent(id)}`, {
+        method:"PUT", body: JSON.stringify({ is_public: next })
+      });
+      await loadTrips();
+    } catch (e) {
+      alert("Toggle failed (ensure your DB has an is_public column): " + e.message);
     }
+  }
 
-    async function saveBrand() {
-      $("brandMsg").textContent = "";
-      const id = $("brandId").value.trim() || "b1";
-      try {
-        const body = {
-          facebook_url: $("fbUrl").value.trim() || null,
-          instagram_url: $("igUrl").value.trim() || null,
-          twitter_url: $("twUrl").value.trim() || null,
-          tiktok_url: $("ttUrl").value.trim() || null
-        };
-        await apiFetch(`/api/brands/${encodeURIComponent(id)}/socials`, {
-          method:"POST", body: JSON.stringify(body)
-        });
-        $("brandMsg").textContent = "✅ Saved";
-      } catch (e) {
-        $("brandMsg").textContent = "❌ " + e.message;
-      }
+  // Payments
+  $("createPayBtn").onclick = async () => {
+    $("payStatus").textContent = "";
+    try {
+      const groupId = $("payGroupId").value.trim() || "g1";
+      const body = {
+        label: $("payLabel").value.trim(),
+        vendor_url: $("payVendor").value.trim(),
+        due_at: $("payDue").value ? Math.floor(new Date($("payDue").value).getTime()/1000) : null
+      };
+      await apiFetch(`/api/groups/${encodeURIComponent(groupId)}/payments`, {
+        method:"POST", body: JSON.stringify(body)
+      });
+      $("payStatus").textContent = "✅ Payment link added";
+      await loadPayments();
+    } catch (e) {
+      $("payStatus").textContent = "❌ " + e.message;
     }
-
-    // ---------- utils ----------
-    function esc(s) {
-      return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  };
+  $("refreshPaysBtn").onclick = loadPayments;
+  async function loadPayments() {
+    const gid = $("payListGroupId").value.trim() || "g1";
+    try {
+      const items = await apiFetch(`/api/groups/${encodeURIComponent(gid)}/payments`);
+      $("payList").innerHTML = items.map(p => `
+        <div class="item">
+          <div>
+            <h3>${esc(p.label)}</h3>
+            ${p.due_at ? `<div class="muted">Due: ${new Date(p.due_at*1000).toLocaleDateString()}</div>` : ""}
+          </div>
+          <div style="display:flex; gap:6px">
+            <a class="pill" href="${esc(p.vendor_url)}" target="_blank">Open</a>
+          </div>
+        </div>
+      `).join("");
+    } catch (e) {
+      $("payList").innerHTML = `<div class="item"><div class="err">Failed to load payments: ${esc(e.message)}</div></div>`;
     }
+  }
 
-    // ---------- initial load ----------
-    (async function init() {
-      // preload defaults to speed you up
-      if (!$("tripListGroupId").value) $("tripListGroupId").value = "g1";
-      if (!$("payListGroupId").value)  $("payListGroupId").value  = "g1";
-      if (!$("tripGroupId").value)     $("tripGroupId").value     = "g1";
-      if (!$("payGroupId").value)      $("payGroupId").value      = "g1";
-      if (!$("brandId").value)         $("brandId").value         = "b1";
-      // Try initial loads (won’t work until you set API + token)
-      try { await loadTrips(); } catch {}
-      try { await loadPayments(); } catch {}
-    })();
-  </script>
+  // Socials
+  $("loadBrandBtn").onclick = loadBrand;
+  $("saveBrandBtn").onclick = saveBrand;
+  async function loadBrand() {
+    $("brandMsg").textContent = "";
+    const id = $("brandId").value.trim() || "b1";
+    try {
+      const data = await apiFetch(`/api/brands/${encodeURIComponent(id)}/socials`);
+      $("fbUrl").value = data.facebook_url || "";
+      $("igUrl").value = data.instagram_url || "";
+      $("twUrl").value = data.twitter_url || "";
+      $("ttUrl").value = data.tiktok_url || "";
+      $("brandMsg").textContent = "✅ Loaded";
+    } catch (e) {
+      $("brandMsg").textContent = "❌ " + e.message;
+    }
+  }
+  async function saveBrand() {
+    $("brandMsg").textContent = "";
+    const id = $("brandId").value.trim() || "b1";
+    try {
+      const body = {
+        facebook_url: $("fbUrl").value.trim() || null,
+        instagram_url: $("igUrl").value.trim() || null,
+        twitter_url: $("twUrl").value.trim() || null,
+        tiktok_url: $("ttUrl").value.trim() || null
+      };
+      await apiFetch(`/api/brands/${encodeURIComponent(id)}/socials`, {
+        method:"POST", body: JSON.stringify(body)
+      });
+      $("brandMsg").textContent = "✅ Saved";
+    } catch (e) {
+      $("brandMsg").textContent = "❌ " + e.message;
+    }
+  }
+
+  // utils
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // initial
+  (async function init() {
+    if (!$("tripListGroupId").value) $("tripListGroupId").value = "g1";
+    if (!$("payListGroupId").value)  $("payListGroupId").value  = "g1";
+    if (!$("tripGroupId").value)     $("tripGroupId").value     = "g1";
+    if (!$("payGroupId").value)      $("payGroupId").value      = "g1";
+    try { await loadTrips(); } catch {}
+    try { await loadPayments(); } catch {}
+  })();
+</script>
 </body>
-
 </html>
