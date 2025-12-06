@@ -34,448 +34,132 @@
 </style>
 </head>
 <body>
-<header>
-  <h1>TripStack Admin</h1>
-  <div class="muted">Manage groups, trips, sections, payments, and socials.</div>
-</header>
+  <header>
+    <h1>TripStack Admin</h1>
+  </header>
 
-<main>
-  <!-- SETTINGS -->
-  <section class="card">
-    <h2>Settings</h2>
-    <label>Worker Base URL</label>
-    <input id="baseUrl" placeholder="https://travel-app.thebusinessshapeup.workers.dev" />
-    <label>Admin Token (Bearer)</label>
-    <input id="token" type="password" placeholder="sk_admin_xxx" />
-    <button id="save">Save</button>
-    <div id="status" class="muted"></div>
-    <button id="healthBtn" style="margin-top:8px;">Ping /health</button>
-    <div id="healthOut" class="muted"></div>
-  </section>
+  <main>
+    <!-- Trip Management -->
+    <section class="card">
+      <h2>Trips</h2>
+      <label>Trip Title</label>
+      <input id="tripTitle" placeholder="e.g. Caribbean Cruise Adventure" />
 
-  <!-- GROUPS -->
-  <section class="card">
-    <h2>Groups</h2>
-    <label>Name</label><input id="gName" placeholder="Caribbean Cruise Group" />
-    <div class="row">
-      <div><label>Capacity</label><input id="gCapacity" placeholder="50" /></div>
-      <div><label>Brand ID</label><input id="gBrandId" placeholder="b1" /></div>
-    </div>
-    <button id="createGroup">Create Group</button>
-    <label>Group ID</label><input id="gId" placeholder="g1" />
-    <label>Leader User ID</label><input id="gLeader" placeholder="user_123" />
-    <div class="row">
-      <button id="setLeader">Set Leader</button>
-      <button id="groupPublic">Make Public</button>
-    </div>
-    <button id="groupPrivate">Make Private</button>
-    <div id="gOut" class="muted"></div>
-  </section>
+      <label>Start Date</label>
+      <input id="tripStart" type="date" />
 
-  <!-- TRIPS -->
-  <section class="card">
-    <h2>Trips</h2>
-    <div class="row">
-      <div><label>Group ID</label><input id="tGroupId" placeholder="g1"></div>
-      <div><label>Title</label><input id="tTitle" placeholder="Caribbean Cruise Adventure"></div>
-    </div>
-    <div class="row">
-      <div><label>Start (epoch sec)</label><input id="tStart" placeholder="1735689600"></div>
-      <div><label>End (epoch sec)</label><input id="tEnd" placeholder="1736208000"></div>
-    </div>
-    <label>Notes</label><input id="tNotes" placeholder="7-night Eastern Caribbean cruise." />
-    <div class="row">
-      <div>
-        <label>Flags</label>
-        <div><span class="tag">Cruise</span> <input type="checkbox" id="fCruise" /></div>
-        <div><span class="tag">Flights</span> <input type="checkbox" id="fFlights" /></div>
-        <div><span class="tag">Hotel</span> <input type="checkbox" id="fHotel" /></div>
-        <div><span class="tag">All-inclusive</span> <input type="checkbox" id="fAI" /></div>
+      <label>End Date</label>
+      <input id="tripEnd" type="date" />
+
+      <div class="row">
+        <label><input type="checkbox" id="tripCruise" /> Cruise</label>
+        <label><input type="checkbox" id="tripFlights" /> Flights</label>
+        <label><input type="checkbox" id="tripHotel" /> Hotel</label>
+        <label><input type="checkbox" id="tripAllInclusive" /> All-inclusive</label>
       </div>
-      <div>
-        <label>Visibility</label>
-        <select id="tVis"><option value="0">Private</option><option value="1">Public</option></select>
+
+      <label>Notes</label>
+      <textarea id="tripNotes" placeholder="Additional trip info..."></textarea>
+
+      <div class="row">
+        <label><input type="checkbox" id="tripPublic" /> Public</label>
+        <label><input type="checkbox" id="tripPrivate" /> Private</label>
       </div>
-    </div>
-    <button id="createTrip">Create Trip</button>
-    <label>Trip ID</label><input id="tId" placeholder="(returned id)" />
-    <div class="row">
-      <button id="tripPublic">Trip → Public</button>
-      <button id="tripPrivate">Trip → Private</button>
-    </div>
-    <button id="flagsUpdate">Update Flags</button>
-    <div id="tOut" class="muted"></div>
 
-    <hr style="margin:14px 0;border:none;border-top:1px solid var(--bd);" />
-    <div class="row">
-      <div>
-        <label>List Trips for Group</label>
-        <button id="listTripsBtn">List Trips</button>
-      </div>
-      <div>
-        <label>Delete Trip (by ID)</label>
-        <button id="delTripBtn" class="danger">Delete Trip</button>
-      </div>
-    </div>
-    <div id="tripsList" class="list"></div>
-  </section>
+      <button onclick="createTrip()">Create Trip</button>
+      <div id="tripStatus" class="muted"></div>
+      <div id="tripList" class="list"></div>
+    </section>
 
-  <!-- TRIP SECTIONS (CREATE) -->
-  <section class="card">
-    <h2>Trip Sections</h2>
-    <label>Trip ID</label><input id="secTrip" placeholder="TRIP_ID" />
+    <!-- Payment Links -->
+    <section class="card">
+      <h2>Payment Links</h2>
+      <label>Label</label>
+      <input id="payLabel" placeholder="e.g. Deposit • Per Person" />
+      <label>Vendor URL</label>
+      <input id="payVendor" placeholder="https://vendor.com/payment" />
+      <label>Due Date</label>
+      <input id="payDue" type="date" />
+      <button onclick="createPayment()">Add Payment Link</button>
+      <div id="payStatus" class="muted"></div>
+      <div id="payList" class="list"></div>
+    </section>
+  </main>
 
-    <h3 style="margin:10px 0 4px;font-size:14px;">Cruise Cabin</h3>
-    <div class="row">
-      <div><label>Cabin #</label><input id="cNo" placeholder="10234" /></div>
-      <div><label>Category</label><input id="cCat" placeholder="Balcony" /></div>
-    </div>
-    <div class="row">
-      <div><label>Deck</label><input id="cDeck" placeholder="10" /></div>
-      <div><label>Guests</label><input id="cGuests" placeholder="2" /></div>
-    </div>
-    <div class="row">
-      <div><label>Price (cents)</label><input id="cPrice" placeholder="189900" /></div>
-      <div><label>Notes</label><input id="cNotes" placeholder="Midship cabin." /></div>
-    </div>
-    <button id="addCabin">Add Cabin</button>
+  <script>
+    const API = "https://travel-app.thebusinessshapeup.workers.dev";
+    const ADMIN_TOKEN = "YOUR_ADMIN_TOKEN_HERE"; // ← replace with your real admin token
+    const GROUP_ID = "g1";
 
-    <h3 style="margin:14px 0 4px;font-size:14px;">Flight Segment</h3>
-    <div class="row">
-      <div><label>Carrier</label><input id="fCarrier" placeholder="AA" /></div>
-      <div><label>Flight #</label><input id="fNo" placeholder="1234" /></div>
-    </div>
-    <div class="row">
-      <div><label>From</label><input id="fFrom" placeholder="MCO" /></div>
-      <div><label>To</label><input id="fTo" placeholder="MIA" /></div>
-    </div>
-    <div class="row">
-      <div><label>Depart (epoch)</label><input id="fDep" placeholder="1735671600" /></div>
-      <div><label>Arrive (epoch)</label><input id="fArr" placeholder="1735678800" /></div>
-    </div>
-    <label>Record Locator</label><input id="fPNR" placeholder="ABC123" />
-    <button id="addFlight">Add Segment</button>
+    async function createTrip() {
+      const body = {
+        group_id: GROUP_ID,
+        title: tripTitle.value.trim(),
+        start_date: Math.floor(new Date(tripStart.value).getTime() / 1000),
+        end_date: Math.floor(new Date(tripEnd.value).getTime() / 1000),
+        has_cruise: tripCruise.checked,
+        has_flights: tripFlights.checked,
+        has_hotel: tripHotel.checked,
+        has_all_inclusive: tripAllInclusive.checked,
+        is_public: tripPublic.checked,
+        notes: tripNotes.value.trim(),
+      };
+      const res = await fetch(`${API}/api/trips`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${ADMIN_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      const j = await res.json();
+      tripStatus.textContent = j.ok ? "✅ Trip created" : `❌ ${j.error}`;
+      loadTrips();
+    }
 
-    <h3 style="margin:14px 0 4px;font-size:14px;">Hotel Room</h3>
-    <label>Hotel Name</label><input id="hName" placeholder="Marriott San Juan Resort" />
-    <div class="row">
-      <div><label>Room Type</label><input id="hRoom" placeholder="Ocean View King" /></div>
-      <div><label>Occupants</label><input id="hOcc" placeholder="2" /></div>
-    </div>
-    <div class="row">
-      <div><label>Check-in (epoch)</label><input id="hIn" placeholder="1735603200" /></div>
-      <div><label>Check-out (epoch)</label><input id="hOutTs" placeholder="1735689600" /></div>
-    </div>
-    <label>Confirmation</label><input id="hConf" placeholder="CONF1234" />
-    <button id="addHotel">Add Room</button>
+    async function loadTrips() {
+      const res = await fetch(`${API}/api/trips?groupId=${GROUP_ID}`);
+      const trips = await res.json();
+      tripList.innerHTML = trips.map(t => `
+        <div class="item">
+          <h3>${t.title}</h3>
+          <span class="pill">${t.is_public ? "Public" : "Private"}</span>
+        </div>
+      `).join("");
+    }
 
-    <h3 style="margin:14px 0 4px;font-size:14px;">All-inclusive</h3>
-    <label>Resort</label><input id="aResort" placeholder="Beaches Turks & Caicos" />
-    <div class="row">
-      <div><label>Plan</label><input id="aPlan" placeholder="Luxury Included" /></div>
-      <div><label>Occupants</label><input id="aOcc" placeholder="2" /></div>
-    </div>
-    <div class="row">
-      <div><label>Check-in (epoch)</label><input id="aIn" placeholder="1736208000" /></div>
-      <div><label>Check-out (epoch)</label><input id="aOut" placeholder="1736467200" /></div>
-    </div>
-    <label>Confirmation</label><input id="aConf" placeholder="AI5678" />
-    <button id="addAI">Add Package</button>
+    async function createPayment() {
+      const body = {
+        label: payLabel.value.trim(),
+        vendor_url: payVendor.value.trim(),
+        due_at: Math.floor(new Date(payDue.value).getTime() / 1000)
+      };
+      const res = await fetch(`${API}/api/groups/${GROUP_ID}/payments`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${ADMIN_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      const j = await res.json();
+      payStatus.textContent = j.ok ? "✅ Payment link added" : `❌ ${j.error}`;
+      loadPayments();
+    }
 
-    <div id="secOut" class="muted"></div>
-  </section>
+    async function loadPayments() {
+      const res = await fetch(`${API}/api/groups/${GROUP_ID}/payments`);
+      const payments = await res.json();
+      payList.innerHTML = payments.map(p => `
+        <div class="item">
+          <h3>${p.label}</h3>
+          <a href="${p.vendor_url}" target="_blank" class="pill">Open</a>
+        </div>
+      `).join("");
+    }
 
-  <!-- PAYMENTS -->
-  <section class="card">
-    <h2>Payments</h2>
-    <div class="row">
-      <div><label>Group ID</label><input id="pGroup" placeholder="g1" /></div>
-      <div><label>Label</label><input id="pLabel" placeholder="Deposit • Per Person" /></div>
-    </div>
-    <label>Vendor URL</label><input id="pUrl" placeholder="https://example.com/pay/123" />
-    <label>Due (epoch, optional)</label><input id="pDue" placeholder="" />
-    <button id="addPay">Add Payment</button>
-
-    <div class="row" style="margin-top:10px;">
-      <div>
-        <label>List Payments (group)</label>
-        <button id="listPaysBtn">List Payments</button>
-      </div>
-      <div>
-        <label>Delete Payment (by ID)</label>
-        <button id="delPayBtn" class="danger">Delete Payment</button>
-      </div>
-    </div>
-    <label>Payment ID (for delete)</label><input id="pId" placeholder="PAYMENT_ID" />
-    <div id="pOut" class="muted"></div>
-    <div id="paysList" class="list"></div>
-  </section>
-
-  <!-- BRAND SOCIALS -->
-  <section class="card">
-    <h2>Brand Socials</h2>
-    <label>Brand ID</label><input id="bId" placeholder="b1" />
-    <label>Facebook</label><input id="bFb" placeholder="https://facebook.com/yourbrand" />
-    <label>Instagram</label><input id="bIg" placeholder="https://instagram.com/yourbrand" />
-    <label>Twitter / X</label><input id="bX" placeholder="https://x.com/yourbrand" />
-    <label>TikTok</label><input id="bTt" placeholder="https://tiktok.com/@yourbrand" />
-    <button id="saveSocials">Save Socials</button>
-    <div id="bOut" class="muted"></div>
-  </section>
-</main>
-
-<script>
-const $ = (id) => document.getElementById(id);
-const state = {
-  baseUrl: localStorage.getItem("ts_base") || "https://travel-app.thebusinessshapeup.workers.dev",
-  token: localStorage.getItem("ts_token") || ""
-};
-$("baseUrl").value = state.baseUrl;
-$("token").value = state.token;
-
-$("save").onclick = () => {
-  state.baseUrl = $("baseUrl").value.trim().replace(/\/$/, "");
-  state.token = $("token").value.trim();
-  localStorage.setItem("ts_base", state.baseUrl);
-  localStorage.setItem("ts_token", state.token);
-  $("status").textContent = "Saved.";
-};
-
-$("healthBtn").onclick = async () => {
-  try {
-    const r = await fetch(state.baseUrl + "/health");
-    const j = await r.json();
-    $("healthOut").innerHTML = j && j.ok ? "<span class='ok'>API reachable</span>" : "<span class='err'>Health failed</span>";
-  } catch { $("healthOut").innerHTML = "<span class='err'>Request failed</span>"; }
-};
-
-async function call(method, path, body, auth=true) {
-  const res = await fetch(state.baseUrl + path, {
-    method,
-    headers: {
-      ...(auth ? { "Authorization":"Bearer " + state.token } : {}),
-      "Content-Type":"application/json"
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  let data; try { data = await res.json(); } catch { data = await res.text(); }
-  return { status: res.status, data };
-}
-
-/* Groups */
-$("createGroup").onclick = async () => {
-  const body = { name: $("gName").value.trim(), capacity: +$("gCapacity").value||0, brand_id: $("gBrandId").value.trim()||null };
-  const r = await call("POST","/api/groups", body);
-  $("gOut").innerHTML = r.status===200 ? "<span class='ok'>Created: "+(r.data.id||"")+"</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-  if (r.data && r.data.id) $("gId").value = r.data.id;
-};
-$("setLeader").onclick = async () => {
-  const gid = $("gId").value.trim();
-  const r = await call("PUT","/api/groups/"+encodeURIComponent(gid)+"/leader", { leader_user_id: $("gLeader").value.trim()||null });
-  $("gOut").innerHTML = r.status===200 ? "<span class='ok'>Leader updated</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-$("groupPublic").onclick = async () => {
-  const gid = $("gId").value.trim();
-  const r = await call("PUT","/api/groups/"+encodeURIComponent(gid)+"/visibility", { is_public: 1 });
-  $("gOut").innerHTML = r.status===200 ? "<span class='ok'>Group public</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-$("groupPrivate").onclick = async () => {
-  const gid = $("gId").value.trim();
-  const r = await call("PUT","/api/groups/"+encodeURIComponent(gid)+"/visibility", { is_public: 0 });
-  $("gOut").innerHTML = r.status===200 ? "<span class='ok'>Group private</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-
-/* Trips */
-$("createTrip").onclick = async () => {
-  const body = {
-    group_id: $("tGroupId").value.trim(),
-    title: $("tTitle").value.trim(),
-    start_date: +$("tStart").value || null,
-    end_date: +$("tEnd").value || null,
-    notes: $("tNotes").value.trim() || null,
-    is_public: +$("tVis").value === 1,
-    has_cruise: $("fCruise").checked ? 1 : 0,
-    has_flights: $("fFlights").checked ? 1 : 0,
-    has_hotel: $("fHotel").checked ? 1 : 0,
-    has_all_inclusive: $("fAI").checked ? 1 : 0
-  };
-  const r = await call("POST","/api/trips", body);
-  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Created: "+(r.data.id||"")+"</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-  if (r.data && r.data.id) $("tId").value = r.data.id;
-};
-$("tripPublic").onclick = async () => {
-  const tid = $("tId").value.trim();
-  const r = await call("PUT","/api/trips/"+encodeURIComponent(tid)+"/visibility", { is_public: 1 });
-  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Trip public</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-$("tripPrivate").onclick = async () => {
-  const tid = $("tId").value.trim();
-  const r = await call("PUT","/api/trips/"+encodeURIComponent(tid)+"/visibility", { is_public: 0 });
-  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Trip private</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-$("flagsUpdate").onclick = async () => {
-  const tid = $("tId").value.trim();
-  const body = {
-    has_cruise: $("fCruise").checked ? 1 : 0,
-    has_flights: $("fFlights").checked ? 1 : 0,
-    has_hotel: $("fHotel").checked ? 1 : 0,
-    has_all_inclusive: $("fAI").checked ? 1 : 0
-  };
-  const r = await call("PUT","/api/trips/"+encodeURIComponent(tid)+"/flags", body);
-  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Flags updated</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-
-/* Trip list + delete */
-$("listTripsBtn").onclick = async () => {
-  const gid = $("tGroupId").value.trim();
-  const r = await fetch(state.baseUrl + "/api/trips?groupId=" + encodeURIComponent(gid));
-  const rows = await r.json();
-  const host = $("tripsList");
-  host.innerHTML = "";
-  (rows||[]).forEach(t => {
-    const el = document.createElement("div");
-    el.className = "item";
-    el.innerHTML = `
-      <div>
-        <h3>${t.title}</h3>
-        <div class="muted">${t.start_date?new Date(t.start_date*1000).toLocaleDateString():"TBD"} — ${t.end_date?new Date(t.end_date*1000).toLocaleDateString():"TBD"}</div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <span class="pill">${t.is_public? "Public":"Private"}</span>
-        <button data-id="${t.id}" class="danger smallDel">Delete</button>
-      </div>`;
-    host.appendChild(el);
-  });
-  host.querySelectorAll(".smallDel").forEach(btn=>{
-    btn.onclick = async () => {
-      const id = btn.getAttribute("data-id");
-      const r = await call("DELETE","/api/trips/"+encodeURIComponent(id), null);
-      btn.closest(".item").remove();
-      $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Trip deleted</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-    };
-  });
-};
-$("delTripBtn").onclick = async () => {
-  const tid = $("tId").value.trim();
-  if (!tid) { $("tOut").textContent = "Enter Trip ID"; return; }
-  const r = await call("DELETE","/api/trips/"+encodeURIComponent(tid), null);
-  $("tOut").innerHTML = r.status===200 ? "<span class='ok'>Trip deleted</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-
-/* Sections (create-only for now) */
-$("addCabin").onclick = async () => {
-  const tid = $("secTrip").value.trim();
-  const body = {
-    cabin_no: $("cNo").value.trim()||null,
-    category: $("cCat").value.trim()||null,
-    deck: $("cDeck").value.trim()||null,
-    guests: +$("cGuests").value||null,
-    price_cents: +$("cPrice").value||null,
-    notes: $("cNotes").value.trim()||null
-  };
-  const r = await call("POST","/api/trips/"+encodeURIComponent(tid)+"/cruise-cabins", body);
-  $("secOut").innerHTML = r.status===200 ? "<span class='ok'>Cabin added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-$("addFlight").onclick = async () => {
-  const tid = $("secTrip").value.trim();
-  const body = {
-    carrier: $("fCarrier").value.trim()||null,
-    flight_no: $("fNo").value.trim()||null,
-    depart_airport: $("fFrom").value.trim()||null,
-    arrive_airport: $("fTo").value.trim()||null,
-    depart_ts: +$("fDep").value||null,
-    arrive_ts: +$("fArr").value||null,
-    record_locator: $("fPNR").value.trim()||null
-  };
-  const r = await call("POST","/api/trips/"+encodeURIComponent(tid)+"/flights", body);
-  $("secOut").innerHTML = r.status===200 ? "<span class='ok'>Flight added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-$("addHotel").onclick = async () => {
-  const tid = $("secTrip").value.trim();
-  const body = {
-    hotel_name: $("hName").value.trim()||null,
-    room_type: $("hRoom").value.trim()||null,
-    check_in_ts: +$("hIn").value||null,
-    check_out_ts: +$("hOutTs").value||null,
-    occupants: +$("hOcc").value||null,
-    confirmation: $("hConf").value.trim()||null
-  };
-  const r = await call("POST","/api/trips/"+encodeURIComponent(tid)+"/hotel-rooms", body);
-  $("secOut").innerHTML = r.status===200 ? "<span class='ok'>Hotel room added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-$("addAI").onclick = async () => {
-  const tid = $("secTrip").value.trim();
-  const body = {
-    resort_name: $("aResort").value.trim()||null,
-    plan_name: $("aPlan").value.trim()||null,
-    check_in_ts: +$("aIn").value||null,
-    check_out_ts: +$("aOut").value||null,
-    occupants: +$("aOcc").value||null,
-    confirmation: $("aConf").value.trim()||null
-  };
-  const r = await call("POST","/api/trips/"+encodeURIComponent(tid)+"/all-inclusive", body);
-  $("secOut").innerHTML = r.status===200 ? "<span class='ok'>All-inclusive added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-
-/* Payments */
-$("addPay").onclick = async () => {
-  const gid = $("pGroup").value.trim();
-  const body = {
-    label: $("pLabel").value.trim(),
-    vendor_url: $("pUrl").value.trim(),
-    due_at: $("pDue").value.trim() ? +$("pDue").value : null
-  };
-  const r = await call("POST","/api/groups/"+encodeURIComponent(gid)+"/payments", body);
-  $("pOut").innerHTML = r.status===200 ? "<span class='ok'>Payment added</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-$("listPaysBtn").onclick = async () => {
-  const gid = $("pGroup").value.trim();
-  const r = await fetch(state.baseUrl + "/api/groups/"+encodeURIComponent(gid)+"/payments");
-  const rows = await r.json();
-  const host = $("paysList"); host.innerHTML = "";
-  (rows||[]).forEach(p=>{
-    const el = document.createElement("div");
-    el.className = "item";
-    el.innerHTML = `
-      <div>
-        <h3>${p.label}</h3>
-        <div class="muted">${p.due_at? new Date(p.due_at*1000).toLocaleDateString() : "No due date"}</div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <span class="pill">ID: ${p.id}</span>
-        <button data-id="${p.id}" class="danger payDel">Delete</button>
-      </div>`;
-    host.appendChild(el);
-  });
-  host.querySelectorAll(".payDel").forEach(btn=>{
-    btn.onclick = async () => {
-      const gid = $("pGroup").value.trim();
-      const pid = btn.getAttribute("data-id");
-      const r = await call("DELETE","/api/groups/"+encodeURIComponent(gid)+"/payments/"+encodeURIComponent(pid), null);
-      btn.closest(".item").remove();
-      $("pOut").innerHTML = r.status===200 ? "<span class='ok'>Payment deleted</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-    };
-  });
-};
-$("delPayBtn").onclick = async () => {
-  const gid = $("pGroup").value.trim();
-  const pid = $("pId").value.trim();
-  const r = await call("DELETE","/api/groups/"+encodeURIComponent(gid)+"/payments/"+encodeURIComponent(pid), null);
-  $("pOut").innerHTML = r.status===200 ? "<span class='ok'>Payment deleted</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-
-/* Brand Socials */
-$("saveSocials").onclick = async () => {
-  const id = $("bId").value.trim();
-  const body = {
-    facebook_url: $("bFb").value.trim()||null,
-    instagram_url: $("bIg").value.trim()||null,
-    twitter_url: $("bX").value.trim()||null,
-    tiktok_url: $("bTt").value.trim()||null
-  };
-  const r = await call("POST","/api/brands/"+encodeURIComponent(id)+"/socials", body);
-  $("bOut").innerHTML = r.status===200 ? "<span class='ok'>Socials saved</span>" : "<span class='err'>"+JSON.stringify(r.data)+"</span>";
-};
-</script>
+    loadTrips();
+    loadPayments();
+  </script>
 </body>
 </html>
