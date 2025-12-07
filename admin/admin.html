@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TripStack Admin</title>
+<style>
+  :root { --p:#0ea5e9; --pd:#0284c7; --b:#0f172a; --m:#64748b; --bd:#e2e8f0; --bg:#f8fafc; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--b); }
+  header { background:var(--p); color:#fff; padding:16px; display:flex; align-items:center; justify-content:space-between; }
+  h1 { margin:0; font-size:20px; }
+  main { padding:16px; display:grid; gap:16px; grid-template-columns: repeat(auto-fit,minmax(340px,1fr)); }
+  .card { background:#fff; border:1px solid var(--bd); border-radius:14px; padding:16px; }
+  h2 { margin:0 0 8px; font-size:18px; }
+  label { display:block; font-size:12px; color:var(--m); margin-top:10px; }
+  input, select, textarea {
+    width:100%; padding:10px; border:1px solid var(--bd); border-radius:10px; font-size:14px; background:#fff;
+  }
+  input[type="checkbox"] { width:auto; margin-right:6px; vertical-align:middle; }
+  textarea { min-height:90px; }
+  button { margin-top:12px; background:var(--p); color:#fff; border:none; padding:10px 14px; font-weight:700; border-radius:10px; cursor:pointer; }
+  button:active { background:var(--pd); }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .muted { color:var(--m); font-size:12px; margin-left:8px; }
+  .ok { color:#047857; font-weight:700; }
+  .err { color:#b91c1c; font-weight:700; }
+  .list { margin-top:8px; display:grid; gap:8px; max-height:360px; overflow:auto; }
+  .item { border:1px solid var(--bd); border-radius:12px; padding:10px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .item h3 { margin:0; font-size:14px; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; display:inline-block; }
+  .danger { background:#ef4444; }
+  .danger:active { background:#dc2626; }
+  .tabs { display:flex; gap:8px; padding:0 16px 8px 16px }
+  .tabs button { background:#e2f2ff; color:#075985; }
+  .tabs button.active { background:#0ea5e9; color:#fff; }
