@@ -283,36 +283,49 @@
 
   $("refreshTripsBtn").onclick = loadTrips;
   async function loadTrips() {
-    const gid = $("tripListGroupId").value.trim() || "g1";
-    try {
-      const trips = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
-      $("tripList").innerHTML = trips.map(t => {
-        const s = t.start_date ? new Date(t.start_date*1000).toLocaleDateString() : "TBD";
-        const e = t.end_date   ? new Date(t.end_date*1000).toLocaleDateString()   : "TBD";
-        const vis = ("is_public" in t) ? (t.is_public ? "Public" : "Private") : null;
-        return `
-          <div class="item">
-            <div>
-              <h3>${esc(t.title || "Untitled Trip")}</h3>
-              <div class="muted">${esc(s)} — ${esc(e)} ${vis ? ` · <span class="pill">${esc(vis)}</span>` : ""}</div>
-            </div>
-            <div style="display:flex; gap:6px">
-              ${vis!==null ? `<button data-action="toggle" data-id="${t.id}">${t.is_public ? "Make Private" : "Make Public"}</button>` : ""}
-              <button class="danger" data-action="delete" data-id="${t.id}">Delete</button>
+  const gidEl = document.getElementById("tripListGroupId");
+  const gid = (gidEl?.value || "g1").trim();
+
+  const list = document.getElementById("tripList");
+  list.innerHTML = '<p class="muted">Loading…</p>';
+
+  try {
+    const raw = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
+    const trips = Array.isArray(raw) ? raw : (raw?.results ?? []);
+
+    if (!Array.isArray(trips) || trips.length === 0) {
+      list.innerHTML = '<p class="muted">No trips found for this group.</p>';
+      return;
+    }
+
+    // render
+    list.innerHTML = trips.map(t => {
+      const start = t.start_date ? new Date(t.start_date * 1000).toLocaleDateString() : "TBD";
+      const end   = t.end_date ? new Date(t.end_date * 1000).toLocaleDateString() : "TBD";
+      const vis   = t.is_public ? "Public" : "Private";
+      return `
+        <div class="item">
+          <div>
+            <h3>${escapeHtml(t.title || "Untitled")}</h3>
+            <div class="muted">${start} — ${end}</div>
+            <div style="margin-top:6px">
+              <span class="pill">${vis}</span>
             </div>
           </div>
-        `;
-      }).join("");
-      $("tripList").querySelectorAll("button").forEach(b=>{
-        const id = b.getAttribute("data-id");
-        const act = b.getAttribute("data-action");
-        if (act==="delete") b.onclick = ()=>deleteTrip(id);
-        if (act==="toggle") b.onclick = ()=>toggleVisibility(id);
-      });
-    } catch (e) {
-      $("tripList").innerHTML = `<div class="item"><div class="err">Failed to load trips: ${esc(e.message)}</div></div>`;
-    }
+          <div style="display:flex; gap:8px">
+            <button data-action="toggle" data-id="${t.id}">
+              ${t.is_public ? "Make Private" : "Make Public"}
+            </button>
+            <button class="danger" data-action="delete" data-id="${t.id}">Delete</button>
+          </div>
+        </div>`;
+    }).join("");
+
+  } catch (err) {
+    list.innerHTML = `<p class="err">Failed to load trips: ${escapeHtml(err.message)}</p>`;
   }
+}
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])) }
   async function deleteTrip(id) {
     if (!confirm("Delete this trip?")) return;
     try {
