@@ -292,6 +292,8 @@
   try {
     const raw = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
     const trips = Array.isArray(raw) ? raw : (raw?.results ?? []);
+    headers["Authorization"] = "Bearer " + adminToken;
+
 
     if (!Array.isArray(trips) || trips.length === 0) {
       list.innerHTML = '<p class="muted">No trips found for this group.</p>';
