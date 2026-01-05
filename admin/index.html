@@ -329,87 +329,99 @@
 
     $("refreshTripsBtn").onclick = loadTrips;
 
-    async function loadTrips() {
-      const gid = (($("tripListGroupId").value || "g1").trim());
-      const list = $("tripList");
-      list.innerHTML = '<div class="muted">Loading…</div>';
+async function loadTrips() {
+  const gid = (($("tripListGroupId")?.value || "g1").trim());
+  const list = $("tripList");
+  list.innerHTML = '<div class="muted">Loading…</div>';
 
-      try {
-        const raw = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
-        const trips = Array.isArray(raw) ? raw : (raw?.results ?? []);
+  try {
+    const raw = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
+    const trips = Array.isArray(raw) ? raw : (raw?.results ?? []);
 
-        if (!Array.isArray(trips) || trips.length === 0) {
-          list.innerHTML = '<div class="muted">No trips found for this group.</div>';
-          return;
-        }
-
-        list.innerHTML = trips.map(t => {
-          <div style="margin-top:6px; padding:6px; border:1px dashed red;">
-  BUTTON TEST FOR: ${t.id}
-</div>
-
-          const start = t.start_date ? new Date(t.start_date * 1000).toLocaleDateString() : "TBD";
-          const end   = t.end_date ? new Date(t.end_date * 1000).toLocaleDateString() : "TBD";
-          const vis   = t.is_public ? "Public" : "Private";
-          return `
-            <div class="item">
-              <div>
-                <h3>${escapeHtml(t.title || "Untitled")}</h3>
-                <div class="muted">${start} — ${end}</div>
-                <div style="margin-top:6px">
-                  <span class="pill">${vis}</span>
-                </div>
-              </div>
-              <div style="display:flex; gap:8px; align-items:center">
-                <button data-action="toggle" data-id="${escapeHtml(t.id)}">
-                  ${t.is_public ? "Make Private" : "Make Public"}
-                </button>
-                <button class="danger" data-action="delete" data-id="${escapeHtml(t.id)}">Delete</button>
-              </div>
-            </div>
-          `;
-        }).join("");
-      } catch (e) {
-        list.innerHTML = `<div class="err">Failed to load trips: ${escapeHtml(e.message)}</div>`;
-      }
+    if (!Array.isArray(trips) || trips.length === 0) {
+      list.innerHTML = '<div class="muted">No trips found for this group.</div>';
+      return;
     }
 
-    // Event delegation for Trips list buttons
-    $("tripList").addEventListener("click", async (e) => {
-      const btn = e.target.closest("button[data-action]");
-      if (!btn) return;
+    list.innerHTML = trips.map(t => {
+      const start = t.start_date ? new Date(t.start_date * 1000).toLocaleDateString() : "TBD";
+      const end   = t.end_date   ? new Date(t.end_date * 1000).toLocaleDateString()   : "TBD";
+      const vis   = t.is_public ? "Public" : "Private";
+      const idEsc = escapeHtml(t.id);
 
-      const action = btn.dataset.action;
-      const id = btn.dataset.id;
+      return `
+        <div class="item">
+          <div>
+            <h3>${escapeHtml(t.title || "Untitled")}</h3>
+            <div class="muted">${start} — ${end}</div>
+            <div style="margin-top:6px">
+              <span class="pill">${vis}</span>
+            </div>
+          </div>
 
-      if (action === "delete") {
-        if (!confirm("Delete this trip?")) return;
-        try {
-          await apiFetch(`/api/trips/${encodeURIComponent(id)}`, { method: "DELETE" });
-          await loadTrips();
-        } catch (err) {
-          alert("Delete failed: " + err.message);
-        }
-      }
+          <div style="display:flex; gap:8px; align-items:center">
+            <button data-action="manage" data-id="${idEsc}">Manage Details</button>
 
-      if (action === "toggle") {
-        try {
-          // fetch current trip to know current state
-          const t = await apiFetch(`/api/trips/${encodeURIComponent(id)}`);
-          const next = !(!!t.is_public);
+            <button data-action="toggle" data-id="${idEsc}">
+              ${t.is_public ? "Make Private" : "Make Public"}
+            </button>
 
-          // IMPORTANT: Your Worker uses /visibility for toggling
-          await apiFetch(`/api/trips/${encodeURIComponent(id)}/visibility`, {
-            method: "PUT",
-            body: JSON.stringify({ is_public: next })
-          });
+            <button class="danger" data-action="delete" data-id="${idEsc}">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
 
-          await loadTrips();
-        } catch (err) {
-          alert("Toggle failed: " + err.message);
-        }
-      }
-    });
+  } catch (e) {
+    list.innerHTML = `<div class="err">Failed to load trips: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+// One click handler for ALL trip buttons (manage/toggle/delete)
+$("tripList").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+
+  const action = btn.dataset.action;
+  const id = btn.dataset.id;
+
+  if (action === "delete") {
+    if (!confirm("Delete this trip?")) return;
+    try {
+      await apiFetch(`/api/trips/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await loadTrips();
+    } catch (err) {
+      alert("Delete failed: " + err.message);
+    }
+    return;
+  }
+
+  if (action === "toggle") {
+    try {
+      const t = await apiFetch(`/api/trips/${encodeURIComponent(id)}`);
+      const next = !t.is_public;
+
+      // IMPORTANT: your Worker supports /visibility, not PUT /api/trips/:id for visibility
+      await apiFetch(`/api/trips/${encodeURIComponent(id)}/visibility`, {
+        method: "PUT",
+        body: JSON.stringify({ is_public: next })
+      });
+
+      await loadTrips();
+    } catch (err) {
+      alert("Toggle failed: " + err.message);
+    }
+    return;
+  }
+
+  if (action === "manage") {
+    // For now just prove the button works.
+    // Next step (Option 2) will open a proper details panel + forms.
+    alert("Manage Details for trip: " + id);
+    return;
+  }
+});
+
 // -------------------------------
 // Trip Details Editor (Option 2)
 // -------------------------------
