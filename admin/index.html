@@ -1,36 +1,782 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>TripStack Admin</title>
-<style>
-  :root { --p:#0ea5e9; --pd:#0284c7; --b:#0f172a; --m:#64748b; --bd:#e2e8f0; --bg:#f8fafc; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--b); }
-  header { background:var(--p); color:#fff; padding:16px; display:flex; align-items:center; justify-content:space-between; }
-  h1 { margin:0; font-size:20px; }
-  main { padding:16px; display:grid; gap:16px; grid-template-columns: repeat(auto-fit,minmax(340px,1fr)); }
-  .card { background:#fff; border:1px solid var(--bd); border-radius:14px; padding:16px; }
-  h2 { margin:0 0 8px; font-size:18px; }
-  label { display:block; font-size:12px; color:var(--m); margin-top:10px; }
-  input, select, textarea {
-    width:100%; padding:10px; border:1px solid var(--bd); border-radius:10px; font-size:14px; background:#fff;
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TripStack Admin</title>
+  <style>
+    :root { --p:#0ea5e9; --pd:#0284c7; --b:#0f172a; --m:#64748b; --bd:#e2e8f0; --bg:#f8fafc; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial; background:var(--bg); color:var(--b); }
+    header { background:var(--p); color:#fff; padding:16px; }
+    h1 { margin:0; font-size:20px; }
+    main { padding:16px; display:grid; gap:16px; grid-template-columns: repeat(auto-fit,minmax(360px,1fr)); }
+    .card { background:#fff; border:1px solid var(--bd); border-radius:14px; padding:16px; }
+    h2 { margin:0 0 8px; font-size:18px; }
+    p { margin: 6px 0 0; color: var(--m); }
+    label { display:block; font-size:12px; color:var(--m); margin-top:10px; }
+    input, textarea {
+      width:100%; padding:10px; border:1px solid var(--bd); border-radius:10px; font-size:14px; background:#fff;
+    }
+    textarea { min-height:90px; }
+    button {
+      margin-top:12px; background:var(--p); color:#fff; border:none;
+      padding:10px 14px; font-weight:700; border-radius:10px; cursor:pointer;
+    }
+    button:active { background:var(--pd); }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .muted { color:var(--m); font-size:12px; }
+    .ok { color:#047857; font-weight:700; }
+    .err { color:#b91c1c; font-weight:700; }
+    .list { margin-top:8px; display:grid; gap:8px; max-height:340px; overflow:auto; }
+    .item { border:1px solid var(--bd); border-radius:12px; padding:10px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .item h3 { margin:0; font-size:14px; }
+    .pill { font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; display:inline-block; }
+    .danger { background:#ef4444; }
+    .danger:active { background:#dc2626; }
+
+    .tabs { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+    .tabBtn {
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 0;
+    }
+    .tabBtn.active { background:#fff; color: var(--p); border-color:#fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TripStack Admin</h1>
+    <div class="tabs">
+      <button class="tabBtn active" data-tab="trips">Trips</button>
+      <button class="tabBtn" data-tab="payments">Payments</button>
+      <button class="tabBtn" data-tab="socials">Socials</button>
+    </div>
+  </header>
+
+  <!-- Settings -->
+  <section class="card" style="margin:16px">
+    <h2>Settings</h2>
+    <p>These are saved in your browser (localStorage). You can change them anytime.</p>
+
+    <div class="row" style="margin-top:10px">
+      <div>
+        <label>API base URL</label>
+        <input id="cfgApi" placeholder="https://your-worker.your-account.workers.dev" />
+        <div class="muted" style="margin-top:6px">Example: https://travel-app.thebusinessshapeup.workers.dev</div>
+      </div>
+      <div>
+        <label>Admin Token</label>
+        <input id="cfgToken" placeholder="paste your ADMIN_TOKEN" />
+        <div class="muted" style="margin-top:6px">Must match env.ADMIN_TOKEN in your Worker</div>
+      </div>
+    </div>
+
+    <button id="saveCfgBtn">Save</button>
+    <span id="cfgMsg" class="muted"></span>
+  </section>
+
+  <!-- TRIPS TAB -->
+  <main id="tab-trips" style="display:grid">
+    <section class="card">
+      <h2>Create Trip</h2>
+      <div class="row">
+        <div>
+          <label>Group ID</label>
+          <input id="tripGroupId" placeholder="e.g. g1" />
+        </div>
+        <div>
+          <label>Title</label>
+          <input id="tripTitle" placeholder="e.g. Caribbean Cruise Adventure" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Start Date</label>
+          <input id="tripStart" type="date" />
+        </div>
+        <div>
+          <label>End Date</label>
+          <input id="tripEnd" type="date" />
+        </div>
+      </div>
+
+      <label>Notes</label>
+      <textarea id="tripNotes" placeholder="Extra info for your travelers…"></textarea>
+
+      <div class="row" style="margin-top:8px">
+        <label><input type="checkbox" id="tripCruise" /> Cruise</label>
+        <label><input type="checkbox" id="tripFlights" /> Flights</label>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="tripHotel" /> Hotel rooms</label>
+        <label><input type="checkbox" id="tripAI" /> All-inclusive</label>
+      </div>
+
+      <div class="row">
+        <label><input type="checkbox" id="tripPublic" /> Public</label>
+        <div></div>
+      </div>
+
+      <button id="createTripBtn">Create Trip</button>
+      <div id="tripStatus" class="muted" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card">
+      <h2>Trips List</h2>
+
+      <div class="row">
+        <div>
+          <label>Group ID to view</label>
+          <input id="tripListGroupId" placeholder="e.g. g1" />
+        </div>
+        <div style="display:flex; align-items:flex-end">
+          <button id="refreshTripsBtn">Refresh</button>
+        </div>
+      </div>
+
+      <div id="tripList" class="list"></div>
+    </section>
+  </main>
+
+  <!-- PAYMENTS TAB -->
+  <main id="tab-payments" style="display:none">
+    <section class="card">
+      <h2>Add Payment Link</h2>
+      <div class="row">
+        <div>
+          <label>Group ID</label>
+          <input id="payGroupId" placeholder="e.g. g1" />
+        </div>
+        <div>
+          <label>Label</label>
+          <input id="payLabel" placeholder="e.g. Deposit • Per Person" />
+        </div>
+      </div>
+      <label>Vendor URL</label>
+      <input id="payVendor" placeholder="https://vendor.example.com/pay/abc" />
+      <label>Due Date</label>
+      <input id="payDue" type="date" />
+
+      <button id="createPayBtn">Add Payment Link</button>
+      <div id="payStatus" class="muted" style="margin-top:8px"></div>
+    </section>
+
+    <section class="card">
+      <h2>Payment Links</h2>
+      <div class="row">
+        <div>
+          <label>Group ID to view</label>
+          <input id="payListGroupId" placeholder="e.g. g1" />
+        </div>
+        <div style="display:flex; align-items:flex-end">
+          <button id="refreshPaysBtn">Refresh</button>
+        </div>
+      </div>
+      <div id="payList" class="list"></div>
+    </section>
+  </main>
+
+  <!-- SOCIALS TAB -->
+  <main id="tab-socials" style="display:none">
+    <section class="card">
+      <h2>Brand Socials</h2>
+      <div class="row">
+        <div>
+          <label>Brand ID</label>
+          <input id="brandId" placeholder="e.g. b1" />
+        </div>
+        <div style="display:flex; align-items:flex-end">
+          <button id="loadBrandBtn">Load</button>
+        </div>
+      </div>
+
+      <label>Facebook URL</label>
+      <input id="fbUrl" placeholder="https://facebook.com/yourpage" />
+      <label>Instagram URL</label>
+      <input id="igUrl" placeholder="https://instagram.com/yourpage" />
+      <label>Twitter/X URL</label>
+      <input id="twUrl" placeholder="https://x.com/yourhandle" />
+      <label>TikTok URL</label>
+      <input id="ttUrl" placeholder="https://tiktok.com/@yourhandle" />
+
+      <button id="saveBrandBtn">Save Socials</button>
+      <div id="brandMsg" class="muted" style="margin-top:8px"></div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // --- Config / localStorage ---
+    const cfg = {
+      load() {
+        $("cfgApi").value = localStorage.getItem("admin.api") || "";
+        $("cfgToken").value = localStorage.getItem("admin.token") || "";
+      },
+      save() {
+        localStorage.setItem("admin.api", $("cfgApi").value.trim());
+        localStorage.setItem("admin.token", $("cfgToken").value.trim());
+        $("cfgMsg").textContent = "✅ Saved";
+        setTimeout(() => ($("cfgMsg").textContent = ""), 1500);
+      },
+      get api() { return ($("cfgApi").value || "").trim().replace(/\/+$/,""); },
+      get token() { return ($("cfgToken").value || "").trim(); }
+    };
+
+    cfg.load();
+    $("saveCfgBtn").onclick = async () => {
+      cfg.save();
+      // Immediately refresh lists after saving settings
+      try { await loadTrips(); } catch {}
+      try { await loadPayments(); } catch {}
+    };
+
+    // --- Fetch wrapper (adds Authorization automatically when token is set) ---
+    async function apiFetch(path, opts = {}) {
+      if (!cfg.api) throw new Error("Set API base URL in Settings first.");
+      const headers = Object.assign(
+        { "Content-Type": "application/json" },
+        opts.headers || {},
+        cfg.token ? { "Authorization": "Bearer " + cfg.token } : {}
+      );
+
+      const res = await fetch(cfg.api + path, { ...opts, headers });
+      const ct = res.headers.get("content-type") || "";
+      const body = ct.includes("application/json") ? await res.json() : await res.text();
+
+      if (!res.ok) {
+        const msg = typeof body === "string" ? body : (body?.error || "Request failed");
+        throw new Error(msg);
+      }
+      return body;
+    }
+
+    // --- Tabs ---
+    document.querySelectorAll(".tabBtn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tabBtn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        const id = btn.dataset.tab;
+        document.querySelectorAll("main[id^='tab-']").forEach(m => m.style.display = "none");
+        $("tab-" + id).style.display = (id === "trips") ? "grid" : "block";
+      });
+    });
+
+    // --- Trips: create ---
+    $("createTripBtn").onclick = async () => {
+      $("tripStatus").textContent = "";
+      try {
+        const group_id = ($("tripGroupId").value.trim() || "g1");
+        const title = $("tripTitle").value.trim();
+        if (!title) throw new Error("Title is required.");
+
+        const start = $("tripStart").value ? Math.floor(new Date($("tripStart").value).getTime()/1000) : null;
+        const end   = $("tripEnd").value   ? Math.floor(new Date($("tripEnd").value).getTime()/1000)   : null;
+
+        const body = {
+          group_id,
+          title,
+          start_date: start,
+          end_date: end,
+          notes: $("tripNotes").value.trim() || null,
+          has_cruise: $("tripCruise").checked,
+          has_flights: $("tripFlights").checked,
+          has_hotel: $("tripHotel").checked,
+          has_all_inclusive: $("tripAI").checked,
+          is_public: $("tripPublic").checked
+        };
+
+        await apiFetch("/api/trips", { method: "POST", body: JSON.stringify(body) });
+        $("tripStatus").textContent = "✅ Trip created";
+        await loadTrips();
+      } catch (e) {
+        $("tripStatus").textContent = "❌ " + e.message;
+      }
+    };
+
+    $("refreshTripsBtn").onclick = loadTrips;
+
+    async function loadTrips() {
+      const gid = (($("tripListGroupId").value || "g1").trim());
+      const list = $("tripList");
+      list.innerHTML = '<div class="muted">Loading…</div>';
+
+      try {
+        const raw = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
+        const trips = Array.isArray(raw) ? raw : (raw?.results ?? []);
+
+        if (!Array.isArray(trips) || trips.length === 0) {
+          list.innerHTML = '<div class="muted">No trips found for this group.</div>';
+          return;
+        }
+
+        list.innerHTML = trips.map(t => {
+          const start = t.start_date ? new Date(t.start_date * 1000).toLocaleDateString() : "TBD";
+          const end   = t.end_date ? new Date(t.end_date * 1000).toLocaleDateString() : "TBD";
+          const vis   = t.is_public ? "Public" : "Private";
+          return `
+            <div class="item">
+              <div>
+                <h3>${escapeHtml(t.title || "Untitled")}</h3>
+                <div class="muted">${start} — ${end}</div>
+                <div style="margin-top:6px">
+                  <span class="pill">${vis}</span>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center">
+                <button data-action="toggle" data-id="${escapeHtml(t.id)}">
+                  ${t.is_public ? "Make Private" : "Make Public"}
+                </button>
+                <button class="danger" data-action="delete" data-id="${escapeHtml(t.id)}">Delete</button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      } catch (e) {
+        list.innerHTML = `<div class="err">Failed to load trips: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    // Event delegation for Trips list buttons
+    $("tripList").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      if (action === "delete") {
+        if (!confirm("Delete this trip?")) return;
+        try {
+          await apiFetch(`/api/trips/${encodeURIComponent(id)}`, { method: "DELETE" });
+          await loadTrips();
+        } catch (err) {
+          alert("Delete failed: " + err.message);
+        }
+      }
+
+      if (action === "toggle") {
+        try {
+          // fetch current trip to know current state
+          const t = await apiFetch(`/api/trips/${encodeURIComponent(id)}`);
+          const next = !(!!t.is_public);
+
+          // IMPORTANT: Your Worker uses /visibility for toggling
+          await apiFetch(`/api/trips/${encodeURIComponent(id)}/visibility`, {
+            method: "PUT",
+            body: JSON.stringify({ is_public: next })
+          });
+
+          await loadTrips();
+        } catch (err) {
+          alert("Toggle failed: " + err.message);
+        }
+      }
+    });
+
+    // --- Payments ---
+    $("createPayBtn").onclick = async () => {
+      $("payStatus").textContent = "";
+      try {
+        const groupId = ($("payGroupId").value.trim() || "g1");
+        const label = $("payLabel").value.trim();
+        const vendor_url = $("payVendor").value.trim();
+        if (!label || !vendor_url) throw new Error("Label and Vendor URL are required.");
+
+        const due_at = $("payDue").value ? Math.floor(new Date($("payDue").value).getTime()/1000) : null;
+
+        await apiFetch(`/api/groups/${encodeURIComponent(groupId)}/payments`, {
+          method: "POST",
+          body: JSON.stringify({ label, vendor_url, due_at })
+        });
+
+        $("payStatus").textContent = "✅ Payment link added";
+        await loadPayments();
+      } catch (e) {
+        $("payStatus").textContent = "❌ " + e.message;
+      }
+    };
+
+    $("refreshPaysBtn").onclick = loadPayments;
+
+    async function loadPayments() {
+      const gid = (($("payListGroupId").value || "g1").trim());
+      const list = $("payList");
+      list.innerHTML = '<div class="muted">Loading…</div>';
+
+      try {
+        const items = await apiFetch(`/api/groups/${encodeURIComponent(gid)}/payments`);
+        const rows = Array.isArray(items) ? items : (items?.results ?? []);
+        if (!rows.length) {
+          list.innerHTML = '<div class="muted">No payment links found.</div>';
+          return;
+        }
+        list.innerHTML = rows.map(p => {
+          const due = p.due_at ? new Date(p.due_at * 1000).toLocaleDateString() : "";
+          const href = normalizeUrl(p.vendor_url);
+          return `
+            <div class="item">
+              <div>
+                <h3>${escapeHtml(p.label || "Payment")}</h3>
+                ${due ? `<div class="muted">Due: ${escapeHtml(due)}</div>` : `<div class="muted">No due date</div>`}
+              </div>
+              <div>
+                <a class="pill" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open</a>
+              </div>
+            </div>
+          `;
+        }).join("");
+      } catch (e) {
+        list.innerHTML = `<div class="err">Failed to load payments: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    // --- Socials ---
+    $("loadBrandBtn").onclick = loadBrand;
+    $("saveBrandBtn").onclick = saveBrand;
+
+    async function loadBrand() {
+      $("brandMsg").textContent = "";
+      const id = ($("brandId").value.trim() || "b1");
+      try {
+        const data = await apiFetch(`/api/brands/${encodeURIComponent(id)}/socials`);
+        $("fbUrl").value = data.facebook_url || "";
+        $("igUrl").value = data.instagram_url || "";
+        $("twUrl").value = data.twitter_url || "";
+        $("ttUrl").value = data.tiktok_url || "";
+        $("brandMsg").textContent = "✅ Loaded";
+      } catch (e) {
+        $("brandMsg").textContent = "❌ " + e.message;
+      }
+    }
+
+    async function saveBrand() {
+      $("brandMsg").textContent = "";
+      const id = ($("brandId").value.trim() || "b1");
+      try {
+        const body = {
+          facebook_url: $("fbUrl").value.trim() || null,
+          instagram_url: $("igUrl").value.trim() || null,
+          twitter_url: $("twUrl").value.trim() || null,
+          tiktok_url: $("ttUrl").value.trim() || null
+        };
+        await apiFetch(`/api/brands/${encodeURIComponent(id)}/socials`, {
+          method: "POST",
+          body: JSON.stringify(body)
+        });
+        $("brandMsg").textContent = "✅ Saved";
+      } catch (e) {
+        $("brandMsg").textContent = "❌ " + e.message;
+      }
+    }
+
+    // --- Utilities ---
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+      }[m]));
+    }
+
+    function normalizeUrl(u) {
+      const s = String(u || "").trim();
+      if (!s) return "#";
+      return /^https?:\/\//i.test(s) ? s : ("https://" + s);
+    }
+
+    // --- Initial defaults + initial loads ---
+    (async function init() {
+      if (!$("tripGroupId").value) $("tripGroupId").value = "g1";
+      if (!$("tripListGroupId").value) $("tripListGroupId").value = "g1";
+      if (!$("payGroupId").value) $("payGroupId").value = "g1";
+      if (!$("payListGroupId").value) $("payListGroupId").value = "g1";
+      if (!$("brandId").value) $("brandId").value = "b1";
+
+      // Load on start (will show “Set API base URL…” if missing)
+      try { await loadTrips(); } catch {}
+      try { await loadPayments(); } catch {}
+    })();
+  </script>
+</body>
+</html>
+      <div class="row">
+        <div>
+          <label>Group ID to view</label>
+          <input id="payListGroupId" placeholder="e.g. g1" />
+        </div>
+        <div style="display:flex; align-items:flex-end">
+          <button id="refreshPaysBtn">Refresh</button>
+        </div>
+      </div>
+      <div id="payList" class="list"></div>
+    </section>
+  </main>
+
+  <!-- Socials tab -->
+  <main id="tab-socials" style="display:none">
+    <section class="card">
+      <h2>Brand Socials</h2>
+      <div class="row">
+        <div>
+          <label>Brand ID</label>
+          <input id="brandId" placeholder="e.g. b1" />
+        </div>
+        <div style="display:flex; align-items:flex-end">
+          <button id="loadBrandBtn">Load</button>
+        </div>
+      </div>
+
+      <label>Facebook URL</label>
+      <input id="fbUrl" placeholder="https://facebook.com/yourpage" />
+      <label>Instagram URL</label>
+      <input id="igUrl" placeholder="https://instagram.com/yourpage" />
+      <label>Twitter/X URL</label>
+      <input id="twUrl" placeholder="https://x.com/yourhandle" />
+      <label>TikTok URL</label>
+      <input id="ttUrl" placeholder="https://tiktok.com/@yourhandle" />
+
+      <button id="saveBrandBtn">Save Socials</button>
+      <span id="brandMsg" class="muted"></span>
+    </section>
+  </main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  // Settings (persist to localStorage)
+  const cfg = {
+    get api()   { return $("cfgApi").value.trim(); },
+    get token() { return $("cfgToken").value.trim(); },
+    save() {
+      localStorage.setItem("admin.api", this.api);
+      localStorage.setItem("admin.token", this.token);
+      $("cfgMsg").textContent = "✅ Saved";
+      setTimeout(()=>$("cfgMsg").textContent="", 1500);
+    },
+    load() {
+      $("cfgApi").value   = localStorage.getItem("admin.api")   || "";
+      $("cfgToken").value = localStorage.getItem("admin.token") || "";
+    }
+  };
+  cfg.load();
+  $("saveCfgBtn").onclick = cfg.save;
+
+  // Fetch wrapper adds Authorization header automatically
+  async function apiFetch(path, opts={}) {
+    const base = cfg.api.replace(/\/+$/,"");
+    const headers = Object.assign(
+      { "Content-Type": "application/json" },
+      opts.headers || {},
+      cfg.token ? { "Authorization": "Bearer " + cfg.token } : {}
+    );
+    const res = await fetch(base + path, { ...opts, headers });
+    const ct = res.headers.get("content-type") || "";
+    const body = ct.includes("application/json") ? await res.json() : await res.text();
+    if (!res.ok) throw new Error(typeof body === "string" ? body : (body.error || "Request failed"));
+    return body;
   }
-  input[type="checkbox"] { width:auto; margin-right:6px; vertical-align:middle; }
-  textarea { min-height:90px; }
-  button { margin-top:12px; background:var(--p); color:#fff; border:none; padding:10px 14px; font-weight:700; border-radius:10px; cursor:pointer; }
-  button:active { background:var(--pd); }
-  .row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .muted { color:var(--m); font-size:12px; margin-left:8px; }
-  .ok { color:#047857; font-weight:700; }
-  .err { color:#b91c1c; font-weight:700; }
-  .list { margin-top:8px; display:grid; gap:8px; max-height:360px; overflow:auto; }
-  .item { border:1px solid var(--bd); border-radius:12px; padding:10px; background:#fff; display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .item h3 { margin:0; font-size:14px; }
-  .pill { font-size:11px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; display:inline-block; }
-  .danger { background:#ef4444; }
-  .danger:active { background:#dc2626; }
-  .tabs { display:flex; gap:8px; padding:0 16px 8px 16px }
-  .tabs button { background:#e2f2ff; color:#075985; }
-  .tabs button.active { background:#0ea5e9; color:#fff; }
+
+  // Tabs
+  document.querySelectorAll(".tabBtn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tabBtn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const id = btn.dataset.tab;
+      document.querySelectorAll("main[id^='tab-']").forEach(m=>m.style.display="none");
+      $("tab-"+id).style.display="block";
+    });
+  });
+
+  // Trips
+  $("createTripBtn").onclick = async () => {
+    $("tripStatus").textContent = "";
+    try {
+      const group_id = $("tripGroupId").value.trim() || "g1";
+      const title = $("tripTitle").value.trim();
+      const start = $("tripStart").value ? Math.floor(new Date($("tripStart").value).getTime()/1000) : null;
+      const end   = $("tripEnd").value   ? Math.floor(new Date($("tripEnd").value).getTime()/1000)   : null;
+      const body = {
+        group_id, title, start_date: start, end_date: end,
+        notes: $("tripNotes").value.trim() || null,
+        has_cruise: $("tripCruise").checked,
+        has_flights: $("tripFlights").checked,
+        has_hotel: $("tripHotel").checked,
+        has_all_inclusive: $("tripAI").checked,
+        is_public: $("tripPublic").checked
+      };
+      await apiFetch("/api/trips", { method:"POST", body: JSON.stringify(body) });
+      $("tripStatus").textContent = "✅ Trip created";
+      await loadTrips();
+    } catch (e) {
+      $("tripStatus").textContent = "❌ " + e.message;
+    }
+  };
+
+  $("refreshTripsBtn").onclick = loadTrips;
+  async function loadTrips() {
+  const gidEl = document.getElementById("tripListGroupId");
+  const gid = (gidEl?.value || "g1").trim();
+
+  const list = document.getElementById("tripList");
+  list.innerHTML = '<p class="muted">Loading…</p>';
+
+  try {
+    const raw = await apiFetch(`/api/trips?groupId=${encodeURIComponent(gid)}`);
+    const trips = Array.isArray(raw) ? raw : (raw?.results ?? []);
+
+
+    if (!Array.isArray(trips) || trips.length === 0) {
+      list.innerHTML = '<p class="muted">No trips found for this group.</p>';
+      return;
+    }
+
+    // render
+    list.innerHTML = trips.map(t => {
+      const start = t.start_date ? new Date(t.start_date * 1000).toLocaleDateString() : "TBD";
+      const end   = t.end_date ? new Date(t.end_date * 1000).toLocaleDateString() : "TBD";
+      const vis   = t.is_public ? "Public" : "Private";
+      return `
+        <div class="item">
+          <div>
+            <h3>${escapeHtml(t.title || "Untitled")}</h3>
+            <div class="muted">${start} — ${end}</div>
+            <div style="margin-top:6px">
+              <span class="pill">${vis}</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px">
+            <button data-action="toggle" data-id="${t.id}">
+              ${t.is_public ? "Make Private" : "Make Public"}
+            </button>
+            <button class="danger" data-action="delete" data-id="${t.id}">Delete</button>
+          </div>
+        </div>`;
+    }).join("");
+
+  } catch (err) {
+    list.innerHTML = `<p class="err">Failed to load trips: ${escapeHtml(err.message)}</p>`;
+  }
+}
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])) }
+  async function deleteTrip(id) {
+    if (!confirm("Delete this trip?")) return;
+    try {
+      await apiFetch(`/api/trips/${encodeURIComponent(id)}`, { method:"DELETE" });
+      await loadTrips();
+    } catch (e) {
+      alert("Delete failed: " + e.message);
+    }
+  }
+  async function toggleVisibility(id) {
+    try {
+      const t = await apiFetch(`/api/trips/${encodeURIComponent(id)}`);
+      const next = !(!!t.is_public);
+      await apiFetch(`/api/trips/${encodeURIComponent(id)}`, {
+        method:"PUT", body: JSON.stringify({ is_public: next })
+      });
+      await loadTrips();
+    } catch (e) {
+      alert("Toggle failed (ensure your DB has an is_public column): " + e.message);
+    }
+  }
+
+  // Payments
+  $("createPayBtn").onclick = async () => {
+    $("payStatus").textContent = "";
+    try {
+      const groupId = $("payGroupId").value.trim() || "g1";
+      const body = {
+        label: $("payLabel").value.trim(),
+        vendor_url: $("payVendor").value.trim(),
+        due_at: $("payDue").value ? Math.floor(new Date($("payDue").value).getTime()/1000) : null
+      };
+      await apiFetch(`/api/groups/${encodeURIComponent(groupId)}/payments`, {
+        method:"POST", body: JSON.stringify(body)
+      });
+      $("payStatus").textContent = "✅ Payment link added";
+      await loadPayments();
+    } catch (e) {
+      $("payStatus").textContent = "❌ " + e.message;
+    }
+  };
+  $("refreshPaysBtn").onclick = loadPayments;
+  async function loadPayments() {
+    const gid = $("payListGroupId").value.trim() || "g1";
+    try {
+      const items = await apiFetch(`/api/groups/${encodeURIComponent(gid)}/payments`);
+      $("payList").innerHTML = items.map(p => `
+        <div class="item">
+          <div>
+            <h3>${esc(p.label)}</h3>
+            ${p.due_at ? `<div class="muted">Due: ${new Date(p.due_at*1000).toLocaleDateString()}</div>` : ""}
+          </div>
+          <div style="display:flex; gap:6px">
+            <a class="pill" href="${esc(p.vendor_url)}" target="_blank">Open</a>
+          </div>
+        </div>
+      `).join("");
+    } catch (e) {
+      $("payList").innerHTML = `<div class="item"><div class="err">Failed to load payments: ${esc(e.message)}</div></div>`;
+    }
+  }
+
+  // Socials
+  $("loadBrandBtn").onclick = loadBrand;
+  $("saveBrandBtn").onclick = saveBrand;
+  async function loadBrand() {
+    $("brandMsg").textContent = "";
+    const id = $("brandId").value.trim() || "b1";
+    try {
+      const data = await apiFetch(`/api/brands/${encodeURIComponent(id)}/socials`);
+      $("fbUrl").value = data.facebook_url || "";
+      $("igUrl").value = data.instagram_url || "";
+      $("twUrl").value = data.twitter_url || "";
+      $("ttUrl").value = data.tiktok_url || "";
+      $("brandMsg").textContent = "✅ Loaded";
+    } catch (e) {
+      $("brandMsg").textContent = "❌ " + e.message;
+    }
+  }
+  async function saveBrand() {
+    $("brandMsg").textContent = "";
+    const id = $("brandId").value.trim() || "b1";
+    try {
+      const body = {
+        facebook_url: $("fbUrl").value.trim() || null,
+        instagram_url: $("igUrl").value.trim() || null,
+        twitter_url: $("twUrl").value.trim() || null,
+        tiktok_url: $("ttUrl").value.trim() || null
+      };
+      await apiFetch(`/api/brands/${encodeURIComponent(id)}/socials`, {
+        method:"POST", body: JSON.stringify(body)
+      });
+      $("brandMsg").textContent = "✅ Saved";
+    } catch (e) {
+      $("brandMsg").textContent = "❌ " + e.message;
+    }
+  }
+
+  // utils
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // initial
+  (async function init() {
+    if (!$("tripListGroupId").value) $("tripListGroupId").value = "g1";
+    if (!$("payListGroupId").value)  $("payListGroupId").value  = "g1";
+    if (!$("tripGroupId").value)     $("tripGroupId").value     = "g1";
+    if (!$("payGroupId").value)      $("payGroupId").value      = "g1";
+    try { await loadTrips(); } catch {}
+    try { await loadPayments(); } catch {}
+  })();
+</script>
+</body>
+</html>
