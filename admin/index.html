@@ -210,6 +210,31 @@
       <div id="brandMsg" class="muted" style="margin-top:8px"></div>
     </section>
   </main>
+<div id="detailsModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); padding:20px; overflow:auto;">
+  <div style="max-width:980px; margin:0 auto; background:#fff; border-radius:14px; padding:16px; border:1px solid var(--bd);">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+      <div>
+        <h2 style="margin:0;">Trip Details Editor</h2>
+        <div class="muted" id="detailsTripMeta"></div>
+      </div>
+      <button id="closeDetailsBtn" class="danger">Close</button>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <div class="tabs">
+      <button class="active" data-tab="cruise">Cruise Cabins</button>
+      <button data-tab="flights">Flights</button>
+      <button data-tab="hotel">Hotel Rooms</button>
+      <button data-tab="ai">All-Inclusive</button>
+    </div>
+
+    <div id="tab-cruise"></div>
+    <div id="tab-flights" style="display:none;"></div>
+    <div id="tab-hotel" style="display:none;"></div>
+    <div id="tab-ai" style="display:none;"></div>
+  </div>
+</div>
 
   <script>
     const $ = (id) => document.getElementById(id);
@@ -381,6 +406,365 @@
         }
       }
     });
+// -------------------------------
+// Trip Details Editor (Option 2)
+// -------------------------------
+let CURRENT_TRIP_ID = null;
+
+const show = (id, yes = true) => { document.getElementById(id).style.display = yes ? "" : "none"; };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, m => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+
+document.getElementById("closeDetailsBtn").onclick = () => {
+  show("detailsModal", false);
+  CURRENT_TRIP_ID = null;
+};
+
+// Tabs switching
+document.querySelectorAll("#detailsModal .tabs button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#detailsModal .tabs button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    ["cruise","flights","hotel","ai"].forEach(k => show("tab-" + k, k === tab));
+  });
+});
+
+// Attach to your trip list container (event delegation)
+document.getElementById("tripList").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+
+  if (btn.dataset.action !== "manage") return;
+
+  const tripId = btn.dataset.id;
+  await openTripDetails(tripId);
+});
+
+async function openTripDetails(tripId) {
+  CURRENT_TRIP_ID = tripId;
+  show("detailsModal", true);
+
+  // Fetch the trip core info (optional but nice)
+  let trip = null;
+  try {
+    trip = await apiFetch(`/api/trips/${tripId}`);
+  } catch {}
+
+  document.getElementById("detailsTripMeta").textContent =
+    trip ? `${trip.title || "Untitled"} • ${trip.group_id || ""} • ${trip.is_public ? "Public" : "Private"}` : `Trip ID: ${tripId}`;
+
+  // Render all tabs
+  await Promise.all([
+    renderCruiseTab(tripId),
+    renderFlightsTab(tripId),
+    renderHotelTab(tripId),
+    renderAITab(tripId),
+  ]);
+
+  // Default to first tab
+  document.querySelector('#detailsModal .tabs button[data-tab="cruise"]').click();
+}
+
+/* ------------------ Cruise Cabins ------------------ */
+async function renderCruiseTab(tripId) {
+  const el = document.getElementById("tab-cruise");
+  el.innerHTML = `
+    <div class="card">
+      <h2 style="margin:0 0 8px">Add Cabin</h2>
+      <div class="row">
+        <div><label>Cabin #</label><input id="cabinNo" placeholder="e.g., 8214" /></div>
+        <div><label>Category</label><input id="cabinCat" placeholder="e.g., Balcony" /></div>
+      </div>
+      <div class="row">
+        <div><label>Deck</label><input id="cabinDeck" placeholder="e.g., 8" /></div>
+        <div><label>Guests</label><input id="cabinGuests" type="number" placeholder="e.g., 2" /></div>
+      </div>
+      <div class="row">
+        <div><label>Price (USD)</label><input id="cabinPrice" type="number" placeholder="e.g., 1299" /></div>
+        <div><label>Notes</label><input id="cabinNotes" placeholder="optional" /></div>
+      </div>
+      <button id="addCabinBtn">Add Cabin</button>
+      <span class="muted" id="cabinStatus"></span>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">Cabins</h2>
+      <div id="cabinsList" class="list"></div>
+    </div>
+  `;
+
+  document.getElementById("addCabinBtn").onclick = async () => {
+    document.getElementById("cabinStatus").textContent = "";
+    try {
+      const price = Number(document.getElementById("cabinPrice").value || 0);
+      const body = {
+        cabin_no: document.getElementById("cabinNo").value.trim() || null,
+        category: document.getElementById("cabinCat").value.trim() || null,
+        deck: document.getElementById("cabinDeck").value.trim() || null,
+        guests: document.getElementById("cabinGuests").value ? Number(document.getElementById("cabinGuests").value) : null,
+        price_cents: price ? Math.round(price * 100) : null,
+        notes: document.getElementById("cabinNotes").value.trim() || null,
+      };
+      await apiFetch(`/api/trips/${tripId}/cruise-cabins`, { method:"POST", body: JSON.stringify(body) });
+      document.getElementById("cabinStatus").textContent = "✅ Added";
+      await loadCruiseCabins(tripId);
+    } catch (e) {
+      document.getElementById("cabinStatus").textContent = "❌ " + e.message;
+    }
+  };
+
+  await loadCruiseCabins(tripId);
+}
+
+async function loadCruiseCabins(tripId) {
+  const list = document.getElementById("cabinsList");
+  list.innerHTML = `<div class="muted">Loading…</div>`;
+  try {
+    const cabins = await apiFetch(`/api/trips/${tripId}/cruise-cabins`);
+    if (!cabins.length) {
+      list.innerHTML = `<div class="muted">No cabins added yet.</div>`;
+      return;
+    }
+    list.innerHTML = cabins.map(c => {
+      const price = c.price_cents ? `$${(c.price_cents/100).toFixed(2)}` : "";
+      return `
+        <div class="item">
+          <div>
+            <h3>${esc(c.cabin_no || "Cabin")}</h3>
+            <div class="muted">${esc([c.category, c.deck ? `Deck ${c.deck}` : "", c.guests ? `${c.guests} guests` : "", price].filter(Boolean).join(" • "))}</div>
+            ${c.notes ? `<div class="muted" style="margin-top:4px">${esc(c.notes)}</div>` : ""}
+          </div>
+          <span class="pill">Cruise</span>
+        </div>
+      `;
+    }).join("");
+  } catch (e) {
+    list.innerHTML = `<div class="err">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+/* ------------------ Flights ------------------ */
+async function renderFlightsTab(tripId) {
+  const el = document.getElementById("tab-flights");
+  el.innerHTML = `
+    <div class="card">
+      <h2 style="margin:0 0 8px">Add Flight Segment</h2>
+      <div class="row">
+        <div><label>Carrier</label><input id="fCarrier" placeholder="e.g., AA" /></div>
+        <div><label>Flight #</label><input id="fNo" placeholder="e.g., 1234" /></div>
+      </div>
+      <div class="row">
+        <div><label>From (Airport)</label><input id="fFrom" placeholder="e.g., ATL" /></div>
+        <div><label>To (Airport)</label><input id="fTo" placeholder="e.g., MIA" /></div>
+      </div>
+      <div class="row">
+        <div><label>Depart (YYYY-MM-DD)</label><input id="fDepart" placeholder="2026-02-10" /></div>
+        <div><label>Arrive (YYYY-MM-DD)</label><input id="fArrive" placeholder="2026-02-10" /></div>
+      </div>
+      <div><label>Record locator</label><input id="fRec" placeholder="optional" /></div>
+      <button id="addFlightBtn">Add Flight</button>
+      <span class="muted" id="flightStatus"></span>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">Flight Segments</h2>
+      <div id="flightsList" class="list"></div>
+    </div>
+  `;
+
+  document.getElementById("addFlightBtn").onclick = async () => {
+    document.getElementById("flightStatus").textContent = "";
+    try {
+      const toTs = (v) => v ? Math.floor(new Date(v).getTime()/1000) : null;
+      const body = {
+        carrier: document.getElementById("fCarrier").value.trim() || null,
+        flight_no: document.getElementById("fNo").value.trim() || null,
+        depart_airport: document.getElementById("fFrom").value.trim() || null,
+        arrive_airport: document.getElementById("fTo").value.trim() || null,
+        depart_ts: toTs(document.getElementById("fDepart").value.trim()),
+        arrive_ts: toTs(document.getElementById("fArrive").value.trim()),
+        record_locator: document.getElementById("fRec").value.trim() || null,
+      };
+      await apiFetch(`/api/trips/${tripId}/flights`, { method:"POST", body: JSON.stringify(body) });
+      document.getElementById("flightStatus").textContent = "✅ Added";
+      await loadFlights(tripId);
+    } catch (e) {
+      document.getElementById("flightStatus").textContent = "❌ " + e.message;
+    }
+  };
+
+  await loadFlights(tripId);
+}
+
+async function loadFlights(tripId) {
+  const list = document.getElementById("flightsList");
+  list.innerHTML = `<div class="muted">Loading…</div>`;
+  try {
+    const rows = await apiFetch(`/api/trips/${tripId}/flights`);
+    if (!rows.length) {
+      list.innerHTML = `<div class="muted">No flights added yet.</div>`;
+      return;
+    }
+    list.innerHTML = rows.map(f => `
+      <div class="item">
+        <div>
+          <h3>${esc([f.carrier, f.flight_no].filter(Boolean).join(" ")) || "Flight"}</h3>
+          <div class="muted">${esc([f.depart_airport, "→", f.arrive_airport].filter(Boolean).join(" "))}</div>
+          ${f.record_locator ? `<div class="muted">Locator: ${esc(f.record_locator)}</div>` : ""}
+        </div>
+        <span class="pill">Flights</span>
+      </div>
+    `).join("");
+  } catch (e) {
+    list.innerHTML = `<div class="err">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+/* ------------------ Hotel Rooms ------------------ */
+async function renderHotelTab(tripId) {
+  const el = document.getElementById("tab-hotel");
+  el.innerHTML = `
+    <div class="card">
+      <h2 style="margin:0 0 8px">Add Hotel Room</h2>
+      <div><label>Hotel name</label><input id="hName" placeholder="e.g., Marriott Downtown" /></div>
+      <div class="row">
+        <div><label>Room type</label><input id="hRoom" placeholder="e.g., King" /></div>
+        <div><label>Occupants</label><input id="hOcc" type="number" placeholder="e.g., 2" /></div>
+      </div>
+      <div class="row">
+        <div><label>Check-in (YYYY-MM-DD)</label><input id="hIn" placeholder="2026-02-10" /></div>
+        <div><label>Check-out (YYYY-MM-DD)</label><input id="hOut" placeholder="2026-02-12" /></div>
+      </div>
+      <div><label>Confirmation</label><input id="hConf" placeholder="optional" /></div>
+      <button id="addHotelBtn">Add Hotel Room</button>
+      <span class="muted" id="hotelStatus"></span>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">Hotel Rooms</h2>
+      <div id="hotelList" class="list"></div>
+    </div>
+  `;
+
+  document.getElementById("addHotelBtn").onclick = async () => {
+    document.getElementById("hotelStatus").textContent = "";
+    try {
+      const toTs = (v) => v ? Math.floor(new Date(v).getTime()/1000) : null;
+      const body = {
+        hotel_name: document.getElementById("hName").value.trim() || null,
+        room_type: document.getElementById("hRoom").value.trim() || null,
+        check_in_ts: toTs(document.getElementById("hIn").value.trim()),
+        check_out_ts: toTs(document.getElementById("hOut").value.trim()),
+        occupants: document.getElementById("hOcc").value ? Number(document.getElementById("hOcc").value) : null,
+        confirmation: document.getElementById("hConf").value.trim() || null,
+      };
+      await apiFetch(`/api/trips/${tripId}/hotel-rooms`, { method:"POST", body: JSON.stringify(body) });
+      document.getElementById("hotelStatus").textContent = "✅ Added";
+      await loadHotel(tripId);
+    } catch (e) {
+      document.getElementById("hotelStatus").textContent = "❌ " + e.message;
+    }
+  };
+
+  await loadHotel(tripId);
+}
+
+async function loadHotel(tripId) {
+  const list = document.getElementById("hotelList");
+  list.innerHTML = `<div class="muted">Loading…</div>`;
+  try {
+    const rows = await apiFetch(`/api/trips/${tripId}/hotel-rooms`);
+    if (!rows.length) {
+      list.innerHTML = `<div class="muted">No hotel rooms added yet.</div>`;
+      return;
+    }
+    list.innerHTML = rows.map(h => `
+      <div class="item">
+        <div>
+          <h3>${esc(h.hotel_name || "Hotel")}</h3>
+          <div class="muted">${esc([h.room_type || "Room", h.occupants ? `${h.occupants} occupants` : ""].filter(Boolean).join(" • "))}</div>
+          ${h.confirmation ? `<div class="muted">Conf: ${esc(h.confirmation)}</div>` : ""}
+        </div>
+        <span class="pill">Hotel</span>
+      </div>
+    `).join("");
+  } catch (e) {
+    list.innerHTML = `<div class="err">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+/* ------------------ All-Inclusive ------------------ */
+async function renderAITab(tripId) {
+  const el = document.getElementById("tab-ai");
+  el.innerHTML = `
+    <div class="card">
+      <h2 style="margin:0 0 8px">Add All-Inclusive Package</h2>
+      <div><label>Resort name</label><input id="aiResort" placeholder="e.g., Secrets Resort" /></div>
+      <div><label>Plan name</label><input id="aiPlan" placeholder="e.g., Preferred Club" /></div>
+      <div class="row">
+        <div><label>Check-in (YYYY-MM-DD)</label><input id="aiIn" placeholder="2026-02-10" /></div>
+        <div><label>Check-out (YYYY-MM-DD)</label><input id="aiOut" placeholder="2026-02-14" /></div>
+      </div>
+      <div class="row">
+        <div><label>Occupants</label><input id="aiOcc" type="number" placeholder="e.g., 2" /></div>
+        <div><label>Confirmation</label><input id="aiConf" placeholder="optional" /></div>
+      </div>
+      <button id="addAIBtn">Add Package</button>
+      <span class="muted" id="aiStatus"></span>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 8px">All-Inclusive</h2>
+      <div id="aiList" class="list"></div>
+    </div>
+  `;
+
+  document.getElementById("addAIBtn").onclick = async () => {
+    document.getElementById("aiStatus").textContent = "";
+    try {
+      const toTs = (v) => v ? Math.floor(new Date(v).getTime()/1000) : null;
+      const body = {
+        resort_name: document.getElementById("aiResort").value.trim() || null,
+        plan_name: document.getElementById("aiPlan").value.trim() || null,
+        check_in_ts: toTs(document.getElementById("aiIn").value.trim()),
+        check_out_ts: toTs(document.getElementById("aiOut").value.trim()),
+        occupants: document.getElementById("aiOcc").value ? Number(document.getElementById("aiOcc").value) : null,
+        confirmation: document.getElementById("aiConf").value.trim() || null,
+      };
+      await apiFetch(`/api/trips/${tripId}/all-inclusive`, { method:"POST", body: JSON.stringify(body) });
+      document.getElementById("aiStatus").textContent = "✅ Added";
+      await loadAI(tripId);
+    } catch (e) {
+      document.getElementById("aiStatus").textContent = "❌ " + e.message;
+    }
+  };
+
+  await loadAI(tripId);
+}
+
+async function loadAI(tripId) {
+  const list = document.getElementById("aiList");
+  list.innerHTML = `<div class="muted">Loading…</div>`;
+  try {
+    const rows = await apiFetch(`/api/trips/${tripId}/all-inclusive`);
+    if (!rows.length) {
+      list.innerHTML = `<div class="muted">No all-inclusive packages added yet.</div>`;
+      return;
+    }
+    list.innerHTML = rows.map(a => `
+      <div class="item">
+        <div>
+          <h3>${esc(a.resort_name || "Resort")}</h3>
+          <div class="muted">${esc([a.plan_name || "Plan", a.occupants ? `${a.occupants} occupants` : ""].filter(Boolean).join(" • "))}</div>
+          ${a.confirmation ? `<div class="muted">Conf: ${esc(a.confirmation)}</div>` : ""}
+        </div>
+        <span class="pill">All-Inclusive</span>
+      </div>
+    `).join("");
+  } catch (e) {
+    list.innerHTML = `<div class="err">Failed: ${esc(e.message)}</div>`;
+  }
+}
 
     // --- Payments ---
     $("createPayBtn").onclick = async () => {
@@ -652,11 +1036,19 @@
             </div>
           </div>
           <div style="display:flex; gap:8px">
-            <button data-action="toggle" data-id="${t.id}">
-              ${t.is_public ? "Make Private" : "Make Public"}
-            </button>
-            <button class="danger" data-action="delete" data-id="${t.id}">Delete</button>
-          </div>
+  <button data-action="manage" data-id="${t.id}">
+    Manage Details
+  </button>
+
+  <button data-action="toggle" data-id="${t.id}">
+    ${t.is_public ? "Make Private" : "Make Public"}
+  </button>
+
+  <button class="danger" data-action="delete" data-id="${t.id}">
+    Delete
+  </button>
+</div>
+
         </div>`;
     }).join("");
 
