@@ -345,6 +345,10 @@
         }
 
         list.innerHTML = trips.map(t => {
+          <div style="margin-top:6px; padding:6px; border:1px dashed red;">
+  BUTTON TEST FOR: ${t.id}
+</div>
+
           const start = t.start_date ? new Date(t.start_date * 1000).toLocaleDateString() : "TBD";
           const end   = t.end_date ? new Date(t.end_date * 1000).toLocaleDateString() : "TBD";
           const vis   = t.is_public ? "Public" : "Private";
