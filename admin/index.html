@@ -235,6 +235,146 @@
     <div id="tab-ai" style="display:none;"></div>
   </div>
 </div>
+<!-- Manage Details Modal -->
+<div id="manageModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); padding:16px; z-index:50;">
+  <div style="max-width:980px; margin:0 auto; background:#fff; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:#0ea5e9; color:#fff;">
+      <div>
+        <div style="font-weight:800; font-size:16px;">Manage Trip Details</div>
+        <div id="manageSubtitle" style="opacity:.9; font-size:12px;"></div>
+      </div>
+      <button id="manageClose" style="background:#0284c7; border:none; color:#fff; padding:8px 12px; border-radius:10px; font-weight:800; cursor:pointer;">Close</button>
+    </div>
+
+    <div style="padding:16px; display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+      <div class="card">
+        <h2>Cruise cabins</h2>
+        <div class="row">
+          <div>
+            <label>Cabin #</label>
+            <input id="cabinNo" placeholder="e.g., 8256" />
+          </div>
+          <div>
+            <label>Category</label>
+            <input id="cabinCat" placeholder="e.g., Balcony" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Deck</label>
+            <input id="cabinDeck" placeholder="e.g., 8" />
+          </div>
+          <div>
+            <label>Guests</label>
+            <input id="cabinGuests" type="number" placeholder="2" />
+          </div>
+        </div>
+        <label>Notes</label>
+        <input id="cabinNotes" placeholder="Optional notes" />
+        <button id="addCabinBtn">Add cabin</button>
+        <div id="cabinsList" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Flights</h2>
+        <div class="row">
+          <div>
+            <label>Carrier</label>
+            <input id="fltCarrier" placeholder="e.g., AA" />
+          </div>
+          <div>
+            <label>Flight #</label>
+            <input id="fltNo" placeholder="e.g., 1234" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Depart airport</label>
+            <input id="fltDep" placeholder="ATL" />
+          </div>
+          <div>
+            <label>Arrive airport</label>
+            <input id="fltArr" placeholder="MIA" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Depart (date/time)</label>
+            <input id="fltDepTs" type="datetime-local" />
+          </div>
+          <div>
+            <label>Arrive (date/time)</label>
+            <input id="fltArrTs" type="datetime-local" />
+          </div>
+        </div>
+        <label>Record locator</label>
+        <input id="fltRec" placeholder="Optional" />
+        <button id="addFlightBtn">Add flight segment</button>
+        <div id="flightsList" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Hotel rooms</h2>
+        <label>Hotel name</label>
+        <input id="hotelName" placeholder="Hotel" />
+        <label>Room type</label>
+        <input id="hotelRoomType" placeholder="King / Double / Suite" />
+        <div class="row">
+          <div>
+            <label>Check-in</label>
+            <input id="hotelIn" type="datetime-local" />
+          </div>
+          <div>
+            <label>Check-out</label>
+            <input id="hotelOut" type="datetime-local" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Occupants</label>
+            <input id="hotelOcc" type="number" placeholder="2" />
+          </div>
+          <div>
+            <label>Confirmation</label>
+            <input id="hotelConf" placeholder="Optional" />
+          </div>
+        </div>
+        <button id="addHotelBtn">Add room</button>
+        <div id="hotelsList" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h2>All-inclusive</h2>
+        <label>Resort name</label>
+        <input id="aiResort" placeholder="Resort" />
+        <label>Plan name</label>
+        <input id="aiPlan" placeholder="Package / Plan" />
+        <div class="row">
+          <div>
+            <label>Check-in</label>
+            <input id="aiIn" type="datetime-local" />
+          </div>
+          <div>
+            <label>Check-out</label>
+            <input id="aiOut" type="datetime-local" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Occupants</label>
+            <input id="aiOcc" type="number" placeholder="2" />
+          </div>
+          <div>
+            <label>Confirmation</label>
+            <input id="aiConf" placeholder="Optional" />
+          </div>
+        </div>
+        <button id="addAIBtn">Add package</button>
+        <div id="aiList" class="list"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
   <script>
     const $ = (id) => document.getElementById(id);
@@ -415,11 +555,9 @@ $("tripList").addEventListener("click", async (e) => {
   }
 
   if (action === "manage") {
-    // For now just prove the button works.
-    // Next step (Option 2) will open a proper details panel + forms.
-    alert("Manage Details for trip: " + id);
-    return;
-  }
+  await openManageModal(id);
+  return;
+}
 });
 
 // -------------------------------
@@ -1185,6 +1323,147 @@ async function loadAI(tripId) {
     try { await loadTrips(); } catch {}
     try { await loadPayments(); } catch {}
   })();
+  let currentTripId = null;
+
+function show(el, on=true){ el.style.display = on ? "block" : "none"; }
+function dtToTs(v){ return v ? Math.floor(new Date(v).getTime()/1000) : null; }
+function escape(s){ return escapeHtml(String(s ?? "")); }
+
+$("manageClose").onclick = () => show($("manageModal"), false);
+
+async function openManageModal(tripId){
+  currentTripId = tripId;
+  show($("manageModal"), true);
+  $("manageSubtitle").textContent = `Trip ID: ${tripId}`;
+  await refreshManageModal();
+}
+
+async function refreshManageModal(){
+  if(!currentTripId) return;
+
+  const data = await apiFetch(`/api/trips/${encodeURIComponent(currentTripId)}/full`);
+
+  // Render cabins
+  const cabins = Array.isArray(data.cruise_cabins) ? data.cruise_cabins : [];
+  $("cabinsList").innerHTML = cabins.length
+    ? cabins.map(c => `
+        <div class="item">
+          <div>
+            <h3>${escape(c.cabin_no || "Cabin")}</h3>
+            <div class="muted">${[c.category, c.deck ? `Deck ${c.deck}` : ""].filter(Boolean).join(" · ")}</div>
+          </div>
+          <div class="pill">${c.guests ? `${c.guests} guests` : "—"}</div>
+        </div>`).join("")
+    : '<div class="muted">No cabins yet.</div>';
+
+  // Render flights
+  const flights = Array.isArray(data.flight_segments) ? data.flight_segments : [];
+  $("flightsList").innerHTML = flights.length
+    ? flights.map(f => `
+        <div class="item">
+          <div>
+            <h3>${escape([f.carrier, f.flight_no].filter(Boolean).join(" ") || "Flight")}</h3>
+            <div class="muted">${escape(f.depart_airport||"?")} → ${escape(f.arrive_airport||"?")}</div>
+          </div>
+          <div class="pill">${f.record_locator ? escape(f.record_locator) : "—"}</div>
+        </div>`).join("")
+    : '<div class="muted">No flights yet.</div>';
+
+  // Render hotels
+  const hotels = Array.isArray(data.hotel_rooms) ? data.hotel_rooms : [];
+  $("hotelsList").innerHTML = hotels.length
+    ? hotels.map(h => `
+        <div class="item">
+          <div>
+            <h3>${escape(h.hotel_name || "Hotel")}</h3>
+            <div class="muted">${escape(h.room_type || "Room")}</div>
+          </div>
+          <div class="pill">${h.confirmation ? escape(h.confirmation) : "—"}</div>
+        </div>`).join("")
+    : '<div class="muted">No hotel rooms yet.</div>';
+
+  // Render all-inclusive
+  const ai = Array.isArray(data.all_inclusive) ? data.all_inclusive : [];
+  $("aiList").innerHTML = ai.length
+    ? ai.map(a => `
+        <div class="item">
+          <div>
+            <h3>${escape(a.resort_name || "Resort")}</h3>
+            <div class="muted">${escape(a.plan_name || "Plan")}</div>
+          </div>
+          <div class="pill">${a.confirmation ? escape(a.confirmation) : "—"}</div>
+        </div>`).join("")
+    : '<div class="muted">No all-inclusive packages yet.</div>';
+}
+
+// Add cabin
+$("addCabinBtn").onclick = async () => {
+  await apiFetch(`/api/trips/${encodeURIComponent(currentTripId)}/cruise-cabins`, {
+    method:"POST",
+    body: JSON.stringify({
+      cabin_no: $("cabinNo").value.trim() || null,
+      category: $("cabinCat").value.trim() || null,
+      deck: $("cabinDeck").value.trim() || null,
+      guests: $("cabinGuests").value ? Number($("cabinGuests").value) : null,
+      notes: $("cabinNotes").value.trim() || null
+    })
+  });
+  $("cabinNo").value = $("cabinCat").value = $("cabinDeck").value = $("cabinGuests").value = $("cabinNotes").value = "";
+  await refreshManageModal();
+};
+
+// Add flight
+$("addFlightBtn").onclick = async () => {
+  await apiFetch(`/api/trips/${encodeURIComponent(currentTripId)}/flights`, {
+    method:"POST",
+    body: JSON.stringify({
+      carrier: $("fltCarrier").value.trim() || null,
+      flight_no: $("fltNo").value.trim() || null,
+      depart_airport: $("fltDep").value.trim() || null,
+      arrive_airport: $("fltArr").value.trim() || null,
+      depart_ts: dtToTs($("fltDepTs").value),
+      arrive_ts: dtToTs($("fltArrTs").value),
+      record_locator: $("fltRec").value.trim() || null
+    })
+  });
+  ["fltCarrier","fltNo","fltDep","fltArr","fltDepTs","fltArrTs","fltRec"].forEach(id => $(id).value = "");
+  await refreshManageModal();
+};
+
+// Add hotel
+$("addHotelBtn").onclick = async () => {
+  await apiFetch(`/api/trips/${encodeURIComponent(currentTripId)}/hotel-rooms`, {
+    method:"POST",
+    body: JSON.stringify({
+      hotel_name: $("hotelName").value.trim() || null,
+      room_type: $("hotelRoomType").value.trim() || null,
+      check_in_ts: dtToTs($("hotelIn").value),
+      check_out_ts: dtToTs($("hotelOut").value),
+      occupants: $("hotelOcc").value ? Number($("hotelOcc").value) : null,
+      confirmation: $("hotelConf").value.trim() || null
+    })
+  });
+  ["hotelName","hotelRoomType","hotelIn","hotelOut","hotelOcc","hotelConf"].forEach(id => $(id).value = "");
+  await refreshManageModal();
+};
+
+// Add all-inclusive
+$("addAIBtn").onclick = async () => {
+  await apiFetch(`/api/trips/${encodeURIComponent(currentTripId)}/all-inclusive`, {
+    method:"POST",
+    body: JSON.stringify({
+      resort_name: $("aiResort").value.trim() || null,
+      plan_name: $("aiPlan").value.trim() || null,
+      check_in_ts: dtToTs($("aiIn").value),
+      check_out_ts: dtToTs($("aiOut").value),
+      occupants: $("aiOcc").value ? Number($("aiOcc").value) : null,
+      confirmation: $("aiConf").value.trim() || null
+    })
+  });
+  ["aiResort","aiPlan","aiIn","aiOut","aiOcc","aiConf"].forEach(id => $(id).value = "");
+  await refreshManageModal();
+};
+
 </script>
 </body>
 </html>
