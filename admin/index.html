@@ -1358,16 +1358,21 @@ async function refreshManageModal(){
 
   // Render flights
   const flights = Array.isArray(data.flight_segments) ? data.flight_segments : [];
-  $("flightsList").innerHTML = flights.length
-    ? flights.map(f => `
-        <div class="item">
-          <div>
-            <h3>${escape([f.carrier, f.flight_no].filter(Boolean).join(" ") || "Flight")}</h3>
-            <div class="muted">${escape(f.depart_airport||"?")} → ${escape(f.arrive_airport||"?")}</div>
-          </div>
-          <div class="pill">${f.record_locator ? escape(f.record_locator) : "—"}</div>
-        </div>`).join("")
-    : '<div class="muted">No flights yet.</div>';
+  $("cabinsList").innerHTML = cabins.length
+  ? cabins.map(c => `
+      <div class="item">
+        <div>
+          <h3>${escape(c.cabin_no || "Cabin")}</h3>
+          <div class="muted">${[c.category, c.deck ? `Deck ${c.deck}` : ""].filter(Boolean).join(" · ")}</div>
+          ${c.notes ? `<div class="muted" style="margin-top:4px">${escape(c.notes)}</div>` : ""}
+        </div>
+        <div style="display:flex; gap:8px; align-items:center">
+          <span class="pill">${c.guests ? `${c.guests} guests` : "—"}</span>
+          <button class="danger" data-del="cabin" data-id="${escape(c.id)}">Delete</button>
+        </div>
+      </div>`).join("")
+  : '<div class="muted">No cabins yet.</div>';
+
 
   // Render hotels
   const hotels = Array.isArray(data.hotel_rooms) ? data.hotel_rooms : [];
@@ -1395,6 +1400,27 @@ async function refreshManageModal(){
         </div>`).join("")
     : '<div class="muted">No all-inclusive packages yet.</div>';
 }
+$("manageModal").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-del]");
+  if (!btn) return;
+
+  const kind = btn.dataset.del;
+  const id = btn.dataset.id;
+  if (!confirm("Delete this item?")) return;
+
+  const path =
+    kind === "cabin" ? `/api/cruise-cabins/${encodeURIComponent(id)}` :
+    kind === "flight" ? `/api/flight-segments/${encodeURIComponent(id)}` :
+    kind === "hotel" ? `/api/hotel-rooms/${encodeURIComponent(id)}` :
+    `/api/ai-packages/${encodeURIComponent(id)}`;
+
+  try {
+    await apiFetch(path, { method: "DELETE" });
+    await refreshManageModal();
+  } catch (err) {
+    alert("Delete failed: " + err.message);
+  }
+});
 
 // Add cabin
 $("addCabinBtn").onclick = async () => {
