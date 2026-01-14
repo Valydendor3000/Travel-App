@@ -7,6 +7,7 @@ name = "CHAT_DO"
 class_name = "ChatRoom"
 
 [[migrations]]
+tag = "v1"
 new_classes = ["ChatRoom"]
 
 [[d1_databases]]
@@ -21,7 +22,7 @@ id = "${CF_KV_NAMESPACE}"
 
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "${CF_R2_BUCKET}"
+bucket_name = "tripstack-assets"
 
 [vars]
 JWT_ISS = "${JWT_ISS}"
