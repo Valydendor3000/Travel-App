@@ -13,6 +13,7 @@ new_classes = ["ChatRoom"]
 binding = "DB"
 database_name = "${CF_D1_DB_NAME}"
 database_id = "${CF_D1_DB_ID}"
+migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "TRIPSTACK_KV"
