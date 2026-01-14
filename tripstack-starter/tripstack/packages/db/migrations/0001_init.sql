@@ -1,11 +1,5 @@
 -- migrations/0001_init.sql
 
--- Cloudflare internal KV helper table (ok to keep)
-CREATE TABLE IF NOT EXISTS _cf_KV (
-  key TEXT PRIMARY KEY,
-  value BLOB
-) WITHOUT ROWID;
-
 -- Users (client accounts)
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
