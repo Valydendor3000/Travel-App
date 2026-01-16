@@ -1,5 +1,5 @@
 name = "tripstack-api"
-main = "packages/api/src/index.ts"
+main = "worker.js"
 compatibility_date = "2025-01-15"
 
 [[durable_objects.bindings]]
