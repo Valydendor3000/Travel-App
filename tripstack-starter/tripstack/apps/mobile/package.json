@@ -1,7 +1,7 @@
 {
   "name": "@tripstack/mobile",
   "private": true,
-  "main": "index.js",
+  "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start"
   },
