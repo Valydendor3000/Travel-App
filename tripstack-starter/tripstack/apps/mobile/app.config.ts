@@ -2,7 +2,9 @@ export default ({ config }) => ({
   ...config,
   name: "TripStack",
   slug: "tripstack",
-
+  splash: {
+    backgroundColor: "#FFFFFF",
+  },
   android: {
     // Must be unique globally. Use reverse-domain style.
     package: "com.destinationmingle.tripstack",
