@@ -5,7 +5,7 @@ export default ({ config }) => ({
 
   // ✅ Required for EAS Update on a dev build
   updates: {
-    url: "exp+tripstack://expo-development-client/?url=http%3A%2F%2F26.148.108.229%3A8081",
+    url: "https://u.expo.dev/8f38cff2-c06a-4e85-be79-2af5d0f79190",
   },
 
   // (Recommended) keep runtime stable for dev updates
